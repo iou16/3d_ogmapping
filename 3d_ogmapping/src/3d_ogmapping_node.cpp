@@ -150,6 +150,7 @@ class ThreeDOGMappingNode
     inline const ParticleVector& getParticles() const {return particles_;};
 
     tf::Pose odoPose_;
+    double minimum_score_;
     double sigma_;
     int kernelSize_;
     double lstep_;
@@ -214,6 +215,7 @@ void ThreeDOGMappingNode::init()
 
   private_nh_.param("transform_publish_period", transform_publish_period_, 0.05);
 
+  private_nh_.param("minimum_score", minimum_score_, 0.0);
   private_nh_.param("sigma", sigma_, 0.05);
   private_nh_.param("kernelSize", kernelSize_, 1);
   private_nh_.param("lstep", lstep_, 0.05);
@@ -224,7 +226,7 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("linerThreshold", linerThreshold_, 1.0);
   private_nh_.param("angularThreshold", angularThreshold_, /*0.5*/0.25);
   private_nh_.param("resampleThreshold", resampleThreshold_, 0.5);
-  private_nh_.param("particle_size", particle_size_,/* 30 */30);
+  private_nh_.param("particle_size", particle_size_,/* 30 */50);
   private_nh_.param("xmin", xmin_, -10.0);
   private_nh_.param("ymin", ymin_, -10.0);
   private_nh_.param("zmin", zmin_, -1.0);
@@ -243,7 +245,7 @@ void ThreeDOGMappingNode::startLiveSlam()
 	// point_cloud_sub_= new message_filters::Subscriber<sensor_msgs::PointCloud>(nh_, "hokuyo3d/hokuyo_cloud", 100);
   // point_cloud_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(*point_cloud_sub_, tf_, base_frame_id_, 100);
   // point_cloud_filter_->registerCallback(boost::bind(&ThreeDOGMappingNode::pointcloudCallback, this, _1));
-  point_cloud_sub_ = nh_.subscribe("hokuyo3d/hokuyo_cloud", 100, &ThreeDOGMappingNode::pointcloudCallback, this);
+  point_cloud_sub_ = nh_.subscribe("hokuyo3d/hokuyo_cloud", 0, &ThreeDOGMappingNode::pointcloudCallback, this);
   
   transform_thread_ = new boost::thread(boost::bind(&ThreeDOGMappingNode::publishLoop, this, transform_publish_period_));
 
@@ -372,6 +374,7 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
   if (!getOdomPose(relPose, point_cloud->header.stamp))
     return;
 
+  ROS_INFO("sampling");
   for (ParticleVector::iterator it=particles_.begin(); it!=particles_.end(); it++){
      motionmodel_.drawFromMotion(it->pose_, relPose, odoPose_, base_to_global);
   }
@@ -415,20 +418,24 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
   base_to_global = tf::Transform(base_to_global_q);
 
   if (first_time || linerDistance_>linerThreshold_ || angularDistance_ >angularThreshold_) {
-    if (first_time) {
+    // if (first_time) {
+    if (true) {
       for (ParticleVector::iterator it=particles_.begin(); it!=particles_.end(); it++){
         scanmatcher_.invalidateActiveArea();
         scanmatcher_.computeActiveArea(it->map, it->pose_, *pcl_point_cloud, base_to_global);
+        ROS_INFO("registerScan");
         scanmatcher_.registerScan(it->map, it->pose_, *pcl_point_cloud, base_to_global);
 
         TNode* node=new TNode(it->pose_, 0., it->node_, 0);
         it->node_=node;
       }
     } else {
+      ROS_INFO("scanMatch");
       scanMatch(*pcl_point_cloud, base_to_global);
 
       updateTreeWeights(false);
 
+      ROS_INFO("resample");
       resample(*pcl_point_cloud, base_to_global);
       
       geometry_msgs::PoseArray cloud_msg;
@@ -449,53 +456,60 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
 	    it->previousPose_=it->pose_;
     }
 
-    int best = getBestParticleIndex();
-    tf::Pose mpose = particles_[best].pose_;
-    tf::Transform base_to_map = tf::Transform(mpose.getRotation(), mpose.getOrigin()).inverse();
-    tf::Transform odom_to_base = tf::Transform(relPose.getRotation(), relPose.getOrigin());
+    // int best = getBestParticleIndex();
+    // tf::Pose mpose = particles_[best].pose_;
+    // tf::Transform base_to_map = tf::Transform(mpose.getRotation(), mpose.getOrigin()).inverse();
+    // tf::Transform odom_to_base = tf::Transform(relPose.getRotation(), relPose.getOrigin());
 
-    map_to_odom_mutex_.lock();
-    map_to_odom_ = (odom_to_base * base_to_map).inverse();
-    map_to_odom_mutex_.unlock();
+    // map_to_odom_mutex_.lock();
+    // map_to_odom_ = (odom_to_base * base_to_map).inverse();
+    // map_to_odom_mutex_.unlock();
     
-    sensor_msgs::PointCloud pc_msg;
-    pc_msg.points.clear();
-    for (int x=0; x < particles_.at(best).map.getMapSizeX(); x++) {
-      for (int y=0; y < particles_.at(best).map.getMapSizeY(); y++) {
-        for (int z=0; z < particles_.at(best).map.getMapSizeZ(); z++){
-          ThreeDOGMapping::IntPoint p(x, y, z);
-          double occ=particles_.at(best).map.cell(p);
-          assert(occ <= 1.0);
-          if(occ > 0.25) {
-            ThreeDOGMapping::Point pc_p = particles_.at(best).map.map2world(x,y,z);
-            
-            geometry_msgs::Point32 p_msg;
-            p_msg.x = pc_p.x;
-            p_msg.y = pc_p.y;
-            p_msg.z = pc_p.z;
-            pc_msg.points.push_back(p_msg);
-          }
-        }
-      }
-    }
-    pc_msg.header.stamp = ros::Time::now();
-    pc_msg.header.frame_id = global_frame_id_;
-    test_pub_3_.publish(pc_msg);
+    // ROS_INFO("publish map");
+    // sensor_msgs::PointCloud pc_msg;
+    // pc_msg.points.clear();
+    // for (int x=0; x < particles_.at(best).map.getMapSizeX(); x++) {
+    //   for (int y=0; y < particles_.at(best).map.getMapSizeY(); y++) {
+    //     for (int z=0; z < particles_.at(best).map.getMapSizeZ(); z++){
+    //       ThreeDOGMapping::IntPoint p(x, y, z);
+    //       double occ=particles_.at(best).map.cell(p);
+    //       assert(occ <= 1.0);
+    //       if(occ > 0.25) {
+    //         ThreeDOGMapping::Point pc_p = particles_.at(best).map.map2world(x,y,z);
+    //         
+    //         geometry_msgs::Point32 p_msg;
+    //         p_msg.x = pc_p.x;
+    //         p_msg.y = pc_p.y;
+    //         p_msg.z = pc_p.z;
+    //         pc_msg.points.push_back(p_msg);
+    //       }
+    //     }
+    //   }
+    // }
+    // pc_msg.header.stamp = ros::Time::now();
+    // pc_msg.header.frame_id = global_frame_id_;
+    // test_pub_3_.publish(pc_msg);
   }
   
   if(first_time == true) first_time = false;
-  ROS_INFO("I");
+  ROS_INFO("END");
 }
 
 inline void ThreeDOGMappingNode::scanMatch(const pcl::PointCloud<pcl::PointXYZ>& point_cloud, tf::Transform& base_to_global){
-  double l, s;
   for (ParticleVector::iterator it=particles_.begin(); it!=particles_.end(); it++){
+    tf::Pose corrected;
+    double score, l, s;
+//    ROS_INFO("optimize");
+//    score=scanmatcher_.optimize(corrected, it->map, it->pose_, point_cloud, base_to_global);
+//    if (score>minimum_score_){
+//      it->pose_=corrected;
+//    }
     scanmatcher_.likelihoodAndScore(s, l, it->map, it->pose_, point_cloud, base_to_global);
     it->weight_+=l;
     it->weightSum_+=l;
 
-    // scanmatcher_.invalidateActiveArea();
-    // scanmatcher_.computeActiveArea(it->map, it->pose_, *pcl_point_cloud, base_to_global);
+    scanmatcher_.invalidateActiveArea();
+    scanmatcher_.computeActiveArea(it->map, it->pose_, point_cloud, base_to_global);
   }
 }
 
@@ -508,7 +522,7 @@ inline bool ThreeDOGMappingNode::resample(const pcl::PointCloud<pcl::PointXYZ>& 
     oldGeneration.push_back(particles_[i].node_);
   }
 
-  // if (neff_<resampleThreshold_*particles_.size()){
+  if (neff_<resampleThreshold_*particles_.size()){
 
   uniform_resampler<double, double> resampler;
   indexes_=resampler.resampleIndexes(weights_, adaptSize);
@@ -547,29 +561,31 @@ inline bool ThreeDOGMappingNode::resample(const pcl::PointCloud<pcl::PointXYZ>& 
   for (ParticleVector::iterator it=temp.begin(); it!=temp.end(); it++){
     it->setWeight(0);
     scanmatcher_.invalidateActiveArea();
+    ROS_INFO("registerScan");
     scanmatcher_.registerScan(it->map, it->pose_, point_cloud, base_to_global);
     particles_.push_back(*it);
   }
   hasResampled = true;
-  // } else {
-  // 
-  // int index=0;
-  // TNodeVector::iterator node_it=oldGeneration.begin();
-  // for (ParticleVector::iterator it=particles_.begin(); it!=particles_.end(); it++){
-  //   TNode* node=0;
-  //   node=new TNode(it->pose, 0.0, *node_it, 0);
-  //   
-  //   node->reading=0;
-  //   it->node=node;
+  } else {
+  
+  int index=0;
+  TNodeVector::iterator node_it=oldGeneration.begin();
+  for (ParticleVector::iterator it=particles_.begin(); it!=particles_.end(); it++){
+    TNode* node=0;
+    node=new TNode(it->pose_, 0.0, *node_it, 0);
+    
+    // node->reading=0;
+    it->node_=node;
 
-  //   scanmatcher_.invalidateActiveArea();
-  //   scanmatcher_.registerScan(it->map, it->pose_, point_cloud, base_to_global);
-  //   it->previousIndex=index;
-  //   index++;
-  //   node_it++;
-  //   
-  // }
-  // }
+    scanmatcher_.invalidateActiveArea();
+    ROS_INFO("registerScan");
+    scanmatcher_.registerScan(it->map, it->pose_, point_cloud, base_to_global);
+    it->previousIndex_=index;
+    index++;
+    node_it++;
+    
+  }
+  }
 
   return hasResampled;
 }
@@ -591,19 +607,19 @@ inline void ThreeDOGMappingNode::normalize(){
 
   weights_.clear();
   double wcum=0;
-  // neff_=0;
+  neff_=0;
   for (ParticleVector::iterator it=particles_.begin(); it!=particles_.end(); it++){
     weights_.push_back(exp(gain*(it->weight_-lmax)));
     wcum+=weights_.back();
   }
 
-  // neff_=0;
-  // for (std::vector<double>::iterator it=weights_.begin(); it!=weights_.end(); it++){
-  //   *it=*it/wcum;
-  //   double w=*it;
-  //   neff_+=w*w;
-  // }
-  // neff_=1./neff_;
+  neff_=0;
+  for (std::vector<double>::iterator it=weights_.begin(); it!=weights_.end(); it++){
+    *it=*it/wcum;
+    double w=*it;
+    neff_+=w*w;
+  }
+  neff_=1./neff_;
 }
 
 inline void ThreeDOGMappingNode::resetTree(){
@@ -644,10 +660,10 @@ double ThreeDOGMappingNode::propagateWeights(){
     w++;
   }
 
-  // if (fabs(aw-1.0) > 0.0001 || fabs(lastNodeWeight-1.0) > 0.0001) {
-	//   std::cout << "root->accWeight=" << lastNodeWeight << "sum_leaf_weights=" << aw << std::endl;
-  //   assert(0);
-  // }
+  if (fabs(aw-1.0) > 0.0001 || fabs(lastNodeWeight-1.0) > 0.0001) {
+	  std::cout << "root->accWeight=" << lastNodeWeight << "sum_leaf_weights=" << aw << std::endl;
+    assert(0);
+  }
   return lastNodeWeight;
 }
 

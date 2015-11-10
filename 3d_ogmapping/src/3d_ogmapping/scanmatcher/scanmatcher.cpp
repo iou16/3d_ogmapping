@@ -177,78 +177,99 @@ double ScanMatcher::registerScan(ScanMatcherMap& map, const tf::Pose& p, const p
 	return esum;
 }
 
-// double ScanMatcher::optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf::Pose& init, const pcl::PointCloud<pcl::PointXYZ>& point_cloud) const{
-// 	double bestScore=-1;
-// 	tf::Pose currentPose=init;
-// 	double currentScore=score(map, currentPose, point_cloud);
-// 	double adelta=m_optAngularDelta, ldelta=m_optLinearDelta;
-// 	unsigned int refinement=0;
-// 	enum Move{Front, Back, Left, Right, TurnLeft, TurnRight, Done};
-// 	int c_iterations=0;
-// 	do{
-// 		if (bestScore>=currentScore){
-// 			refinement++;
-// 			adelta*=.5;
-// 			ldelta*=.5;
-// 		}
-// 		bestScore=currentScore;
-// 		tf::Pose bestLocalPose=currentPose;
-// 		tf::Pose localPose=currentPose;
-// 
-// 		Move move=Front;
-// 		do {
-// 			localPose=currentPose;
-// 			switch(move){
-// 				case Front:
-// 					localPose.setX(localPose.getX()+ldelta);
-// 					move=Back;
-// 					break;
-// 				case Back:
-// 					localPose.setX(localPose.getX()-ldelta);
-// 					move=Left;
-// 					break;
-// 				case Left:
-// 					localPose.setY(localPose.getY()-ldelta);
-// 					move=Right;
-// 					break;
-// 				case Right:
-// 					localPose.setY(localPose.getY()+ldelta);
-// 					move=TurnLeft;
-// 					break;
-// 				case TurnLeft:
-// 					localPose.theta+=adelta;
-// 					move=TurnRight;
-// 					break;
-// 				case TurnRight:
-// 					localPose.theta-=adelta;
-// 					move=Done;
-// 					break;
-// 				default:;
-// 			}
-// 			
-// 			double odo_gain=1;
-// 			if (m_angularOdometryReliability>0.){
-// 				double dth=init.theta-localPose.theta; 	dth=atan2(sin(dth), cos(dth)); 	dth*=dth;
-// 				odo_gain*=exp(-m_angularOdometryReliability*dth);
-// 			}
-// 			if (m_linearOdometryReliability>0.){
-// 				double dx=init.x-localPose.x;
-// 				double dy=init.y-localPose.y;
-// 				double drho=dx*dx+dy*dy;
-// 				odo_gain*=exp(-m_linearOdometryReliability*drho);
-// 			}
-// 			double localScore=odo_gain*score(map, localPose, readings);
-// 			
-// 			if (localScore>currentScore){
-// 				currentScore=localScore;
-// 				bestLocalPose=localPose;
-// 			}
-// 			c_iterations++;
-// 		} while(move!=Done);
-// 		currentPose=bestLocalPose;
-// 	}while (currentScore>bestScore || refinement<m_optRecursiveIterations);
-// 	pnew=currentPose;
-// 	return bestScore;
-// }
+double ScanMatcher::optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf::Pose& init, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const{
+	double bestScore=-1;
+	tf::Pose currentPose=init;
+	double currentScore=score(map, currentPose, point_cloud, base_to_global);
+	double adelta=m_optAngularDelta, ldelta=m_optLinearDelta;
+	unsigned int refinement=0;
+	enum Move{Front, Back, Left, Right, Up, Down,  RollPlus, RollMinus, PitchPlus, PitchMinus, YawPlus, YawMinus, Done};
+	do{
+		if (bestScore>=currentScore){
+			refinement++;
+			adelta*=.5;
+			ldelta*=.5;
+		}
+		bestScore=currentScore;
+		tf::Pose bestLocalPose=currentPose;
+
+    double current_roll, current_pitch, current_yaw;
+    tf::Matrix3x3 current_mat = currentPose.getBasis();
+    current_mat.getRPY(current_roll, current_pitch, current_yaw);
+    current_roll = atan2(sin(current_roll), cos(current_roll));
+    current_pitch = atan2(sin(current_pitch), cos(current_pitch));
+    current_yaw = atan2(sin(current_yaw), cos(current_yaw));
+
+    Pose localPose(currentPose.getOrigin().x(),currentPose.getOrigin().y(),currentPose.getOrigin().z(),
+                    current_roll, current_pitch, current_yaw);
+
+		Move move=Front;
+		do {
+			localPose=Pose(currentPose.getOrigin().x(),currentPose.getOrigin().y(),currentPose.getOrigin().z(),
+                     current_roll, current_pitch, current_yaw);
+			switch(move){
+				case Front:
+					localPose.x+=ldelta;
+					move=Back;
+					break;
+				case Back:
+					localPose.x-=ldelta;
+					move=Left;
+					break;
+				case Left:
+					localPose.y-=ldelta;
+					move=Right;
+					break;
+				case Right:
+					localPose.y+=ldelta;
+					move=Up;
+					break;
+        case Up:
+          localPose.z+=ldelta;
+          move=Down;
+          break;
+        case Down:
+          localPose.z-=ldelta;
+          move=RollPlus;
+          break;
+        case RollPlus:
+          localPose.roll+=adelta;
+          move=RollMinus;
+          break;
+        case RollMinus:
+          localPose.roll-=adelta;
+          move=PitchPlus;
+          break;
+        case PitchPlus:
+          localPose.pitch+=adelta;
+          move=PitchMinus;
+          break;
+        case PitchMinus:
+          localPose.pitch-=adelta;
+          move=YawPlus;
+          break;
+        case YawPlus:
+          localPose.yaw+=adelta;
+          move=YawMinus;
+          break;
+        case YawMinus:
+          localPose.yaw-=adelta;
+          move=Done;
+          break;
+				default:;
+			}
+			
+			double odo_gain=1;
+			double localScore=odo_gain*score(map, tf::Pose(tf::createQuaternionFromRPY(localPose.roll,localPose.pitch,localPose.yaw),tf::Vector3(localPose.x,localPose.y,localPose.z)), point_cloud, base_to_global);
+			if (localScore>currentScore){
+				currentScore=localScore;
+				bestLocalPose=tf::Pose(tf::createQuaternionFromRPY(localPose.roll,localPose.pitch,localPose.yaw),tf::Vector3(localPose.x,localPose.y,localPose.z));
+			}
+		} while(move!=Done);
+		currentPose=bestLocalPose;
+	}while (currentScore>bestScore || refinement<m_optRecursiveIterations);
+	pnew=currentPose;
+	return bestScore;
+}
 
 };

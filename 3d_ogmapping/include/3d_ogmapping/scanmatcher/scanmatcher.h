@@ -32,13 +32,13 @@ class ScanMatcher{
     void setgenerateMap(bool generateMap);
 		void setMatchingParameters
 			(int kernsize, double lopt, double aopt, int iterations, double sigma, double likelihoodSigma=1);
-    // double optimize(OrientedPoint& pnew, const ScanMatcherMap& map, const OrientedPoint& p, const double* readings) const;
+    double optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf::Pose& init, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const;
 		void invalidateActiveArea();
 		void computeActiveArea(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global);
 		double registerScan(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global);
 
-		inline double score(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const;
-    inline unsigned int likelihoodAndScore(double& s, double& l, ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const;
+		inline double score(const ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const;
+    inline unsigned int likelihoodAndScore(double& s, double& l, const ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const;
 		
 		static const double nullLikelihood;
 	protected:
@@ -61,7 +61,7 @@ class ScanMatcher{
     // ros::Publisher test_pub;
 };
 
-inline double ScanMatcher::score(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const{
+inline double ScanMatcher::score(const ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const{
 	double s=0;
 	double freeDelta=map.getDelta()*m_freeCellRatio;
   pcl::PointCloud<pcl::PointXYZ> point_cloud_ = point_cloud;
@@ -127,7 +127,7 @@ inline double ScanMatcher::score(ScanMatcherMap& map, const tf::Pose& p, const p
 	return s;
 }
 
-inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const{
+inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, const ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const{
 	l=0;
 	s=0;
 	double freeDelta=map.getDelta()*m_freeCellRatio;

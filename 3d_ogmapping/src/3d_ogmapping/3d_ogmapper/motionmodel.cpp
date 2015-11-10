@@ -48,8 +48,9 @@ namespace ThreeDOGMapping {
 				delta_yaw-=2*M_PI;
 
    		tf::Pose noisy_pose(tf::createQuaternionFromRPY(delta_roll,delta_pitch,delta_yaw),tf::Vector3(delta_x,delta_y,delta_z));
-      // tf::Transform base_to_global_(p.inverse().getRotation());
-      noisy_pose.setOrigin(base_to_global * noisy_pose.getOrigin());
+      tf::Transform base_to_global_(p.inverse().getRotation());
+      // noisy_pose.setOrigin(base_to_global * noisy_pose.getOrigin());
+      noisy_pose.setOrigin(base_to_global_ * noisy_pose.getOrigin());
       // noisy_pose.setRotation(noisy_pose.getRotation());
       p.setOrigin(p.getOrigin() + noisy_pose.getOrigin());
       p.setRotation(p.getRotation() * noisy_pose.getRotation());
