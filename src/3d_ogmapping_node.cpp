@@ -379,7 +379,7 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
   pcl::PointCloud<pcl::PointXYZ>::Ptr voxel_cloud (new pcl::PointCloud<pcl::PointXYZ>);
   pcl::VoxelGrid<pcl::PointXYZ> vg;
   vg.setInputCloud (pcl_point_cloud);
-  vg.setLeafSize (0.05, 0.05, 0.05);
+  vg.setLeafSize (0.025, 0.025, 0.025);
   vg.filter (*voxel_cloud);
 
   static tf::Transform base_to_global;
@@ -441,21 +441,21 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
     if (first_time) {
       for (ParticleVector::iterator it=particles_.begin(); it!=particles_.end(); it++){
         scanmatcher_.invalidateActiveArea();
-        scanmatcher_.computeActiveArea(it->map, it->pose_, *pcl_point_cloud, base_to_global);
+        scanmatcher_.computeActiveArea(it->map, it->pose_, *voxel_cloud, base_to_global);
         ROS_INFO("registerScan");
-        scanmatcher_.registerScan(it->map, it->pose_, *pcl_point_cloud, base_to_global);
+        scanmatcher_.registerScan(it->map, it->pose_, *voxel_cloud, base_to_global);
 
         TNode* node=new TNode(it->pose_, 0., it->node_, 0);
         it->node_=node;
       }
     } else {
       ROS_INFO("scanMatch");
-      scanMatch(*pcl_point_cloud, base_to_global);
+      scanMatch(*voxel_cloud, base_to_global);
 
       updateTreeWeights(false);
 
       ROS_INFO("resample");
-      resample(*pcl_point_cloud, base_to_global);
+      resample(*voxel_cloud, base_to_global);
       
       geometry_msgs::PoseArray cloud_msg;
       cloud_msg.header.stamp = ros::Time::now();

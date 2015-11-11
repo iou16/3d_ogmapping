@@ -11,7 +11,7 @@ template <class Cell>
 class HierarchicalArray3D: public Array3D<autoptr< Array3D<Cell> > >{
 	public:
 		typedef std::set< point<int>, pointcomparator<int> > PointSet;
-		HierarchicalArray3D(int xsize, int ysize, int zsize, int patchMagnitude=1);
+		HierarchicalArray3D(int xsize, int ysize, int zsize, int patchMagnitude=5);
 		HierarchicalArray3D(const HierarchicalArray3D& hg);
 		HierarchicalArray3D& operator=(const HierarchicalArray3D& hg);
 		virtual ~HierarchicalArray3D(){}
