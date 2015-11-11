@@ -32,9 +32,9 @@ namespace ThreeDOGMapping {
 			double sxy=0.3*srr;
 			delta_x+=sampleGaussian(srr*fabs(delta_x)+str*fabs(delta_y)+sxy*fabs(delta_yaw)+0.01*fabs(delta_z)+0.01*fabs(delta_pitch));
 			delta_y+=sampleGaussian(srr*fabs(delta_y)+str*fabs(delta_x)+sxy*fabs(delta_yaw)+0.01*fabs(delta_z)+0.01*fabs(delta_roll));
-			delta_z+=sampleGaussian(0.1*fabs(delta_z)+fabs(delta_x)*0.01+fabs(delta_y)*0.01+fabs(delta_roll)*0.01+fabs(delta_pitch)*0.1);
-			delta_roll+=sampleGaussian(0.2*fabs(delta_roll)+0.01*fabs(delta_pitch)+0.01*fabs(delta_yaw)+0.1*dxyz);
-			delta_pitch+=sampleGaussian(0.01*fabs(delta_roll)+0.2*fabs(delta_pitch)+0.01*fabs(delta_yaw)+0.1*dxyz);
+			// delta_z+=sampleGaussian(0.1*fabs(delta_z)+fabs(delta_x)*0.01+fabs(delta_y)*0.01+fabs(delta_roll)*0.01+fabs(delta_pitch)*0.1);
+			// delta_roll+=sampleGaussian(0.2*fabs(delta_roll)+0.01*fabs(delta_pitch)+0.01*fabs(delta_yaw)+0.1*dxyz);
+			// delta_pitch+=sampleGaussian(0.01*fabs(delta_roll)+0.2*fabs(delta_pitch)+0.01*fabs(delta_yaw)+0.1*dxyz);
 			delta_yaw+=sampleGaussian(0.01*fabs(delta_roll)+0.01*fabs(delta_pitch)+stt*fabs(delta_yaw)+srt*dxyz);
 			delta_roll=fmod(delta_roll, 2*M_PI);
 			delta_pitch=fmod(delta_pitch, 2*M_PI);

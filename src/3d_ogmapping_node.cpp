@@ -23,6 +23,7 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/PCLPointCloud2.h>
+#include <pcl/filters/voxel_grid.h>
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -190,7 +191,7 @@ class ThreeDOGMappingNode
 
 ThreeDOGMappingNode::ThreeDOGMappingNode():
   map_to_odom_(tf::Transform(tf::createQuaternionFromRPY(0 ,0 ,0), tf::Point(0, 0, 0))),
-	private_nh_("~"), transform_thread_(NULL), tf_(ros::Duration(100))
+	private_nh_("~"), transform_thread_(NULL), tf_(ros::Duration(240))
 {
   init();
 }
@@ -234,14 +235,14 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("linerThreshold", linerThreshold_, 1.0);
   private_nh_.param("angularThreshold", angularThreshold_, 0.5);
   private_nh_.param("resampleThreshold", resampleThreshold_, 0.5);
-  private_nh_.param("particle_size", particle_size_, 50 );
+  private_nh_.param("particle_size", particle_size_, 40);
   private_nh_.param("xmin", xmin_, -10.0);
   private_nh_.param("ymin", ymin_, -10.0);
   private_nh_.param("zmin", zmin_, -1.0);
   private_nh_.param("xmax", xmax_, 10.0);
   private_nh_.param("ymax", ymax_, 10.0);
   private_nh_.param("zmax", zmax_, 1.0);
-  private_nh_.param("delta", delta_, 0.5);
+  private_nh_.param("delta", delta_, 0.05);
 
   private_nh_.param("tf_delay", tf_delay_, transform_publish_period_);
 
@@ -253,7 +254,7 @@ void ThreeDOGMappingNode::startLiveSlam()
 	// point_cloud_sub_= new message_filters::Subscriber<sensor_msgs::PointCloud>(nh_, "hokuyo3d/hokuyo_cloud", 100);
   // point_cloud_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(*point_cloud_sub_, tf_, base_frame_id_, 100);
   // point_cloud_filter_->registerCallback(boost::bind(&ThreeDOGMappingNode::pointcloudCallback, this, _1));
-  point_cloud_sub_ = nh_.subscribe("hokuyo3d/hokuyo_cloud", 100, &ThreeDOGMappingNode::pointcloudCallback, this);
+  point_cloud_sub_ = nh_.subscribe("hokuyo3d/hokuyo_cloud", 0, &ThreeDOGMappingNode::pointcloudCallback, this);
   
   transform_thread_ = new boost::thread(boost::bind(&ThreeDOGMappingNode::publishLoop, this, transform_publish_period_));
 
@@ -374,6 +375,12 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
   sensor_msgs::convertPointCloudToPointCloud2(*point_cloud, point_cloud2);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_point_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::fromROSMsg(point_cloud2, *pcl_point_cloud);
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr voxel_cloud (new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::VoxelGrid<pcl::PointXYZ> vg;
+  vg.setInputCloud (pcl_point_cloud);
+  vg.setLeafSize (0.05, 0.05, 0.05);
+  vg.filter (*voxel_cloud);
 
   static tf::Transform base_to_global;
 
@@ -511,11 +518,11 @@ inline void ThreeDOGMappingNode::scanMatch(const pcl::PointCloud<pcl::PointXYZ>&
   for (ParticleVector::iterator it=particles_.begin(); it!=particles_.end(); it++){
     tf::Pose corrected;
     double score, l, s;
-//    ROS_INFO("optimize");
-//    score=scanmatcher_.optimize(corrected, it->map, it->pose_, point_cloud, base_to_global);
-//    if (score>minimum_score_){
-//      it->pose_=corrected;
-//    }
+   // ROS_INFO("optimize");
+   // score=scanmatcher_.optimize(corrected, it->map, it->pose_, point_cloud, base_to_global);
+   // if (score>minimum_score_){
+   //   it->pose_=corrected;
+   // }
     scanmatcher_.likelihoodAndScore(s, l, it->map, it->pose_, point_cloud, base_to_global);
     it->weight_+=l;
     it->weightSum_+=l;
