@@ -202,10 +202,6 @@ ThreeDOGMappingNode::~ThreeDOGMappingNode()
     transform_thread_->join();
     delete transform_thread_;
   }
-	// if (point_cloud_sub_)
-  //   delete point_cloud_sub_;
-	// if (point_cloud_filter_)
-  //   delete point_cloud_filter_;
 }
 
 void ThreeDOGMappingNode::init()
@@ -251,9 +247,6 @@ void ThreeDOGMappingNode::init()
 
 void ThreeDOGMappingNode::startLiveSlam()
 {
-	// point_cloud_sub_= new message_filters::Subscriber<sensor_msgs::PointCloud>(nh_, "hokuyo3d/hokuyo_cloud", 100);
-  // point_cloud_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(*point_cloud_sub_, tf_, base_frame_id_, 100);
-  // point_cloud_filter_->registerCallback(boost::bind(&ThreeDOGMappingNode::pointcloudCallback, this, _1));
   point_cloud_sub_ = nh_.subscribe("hokuyo3d/hokuyo_cloud", 0, &ThreeDOGMappingNode::pointcloudCallback, this);
   
   transform_thread_ = new boost::thread(boost::bind(&ThreeDOGMappingNode::publishLoop, this, transform_publish_period_));
