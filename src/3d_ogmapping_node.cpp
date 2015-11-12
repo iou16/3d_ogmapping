@@ -115,6 +115,7 @@ class ThreeDOGMappingNode
     ros::Publisher test_pub_1_;
     ros::Publisher test_pub_2_;
     ros::Publisher test_pub_3_;
+    ros::Publisher test_pub_4_;
 
     ros::NodeHandle nh_;
 		tf::TransformListener tf_;
@@ -251,9 +252,10 @@ void ThreeDOGMappingNode::startLiveSlam()
   
   transform_thread_ = new boost::thread(boost::bind(&ThreeDOGMappingNode::publishLoop, this, transform_publish_period_));
 
-  test_pub_1_ = nh_.advertise<geometry_msgs::PoseStamped>("nowpose", 2, true);
-  test_pub_2_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 2, true);
-  test_pub_3_ = nh_.advertise<sensor_msgs::PointCloud>("pointcloud", 2, true);
+  test_pub_1_ = nh_.advertise<geometry_msgs::PoseStamped>("nowpose", 0, true);
+  test_pub_2_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 0, true);
+  test_pub_3_ = nh_.advertise<sensor_msgs::PointCloud>("pointcloud", 0, true);
+  test_pub_4_ = nh_.advertise<geometry_msgs::PoseStamped>("bestpose", 0, true);
 }
 
 void
@@ -444,6 +446,12 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
     } else {
       ROS_INFO("scanMatch");
       scanMatch(*voxel_cloud, base_to_global);
+
+      geometry_msgs::PoseStamped ps_msg;
+      ps_msg.header.stamp = ros::Time::now();
+      ps_msg.header.frame_id = global_frame_id_;
+      tf::poseTFToMsg(tf::Pose(particles_.at(getBestParticleIndex()).pose_.getRotation(), particles_.at(getBestParticleIndex()).pose_.getOrigin()), ps_msg.pose);
+      test_pub_4_.publish(ps_msg);
 
       updateTreeWeights(false);
 
