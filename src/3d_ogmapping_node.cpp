@@ -232,7 +232,7 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("linerThreshold", linerThreshold_, 1.0);
   private_nh_.param("angularThreshold", angularThreshold_, 0.5);
   private_nh_.param("resampleThreshold", resampleThreshold_, 0.5);
-  private_nh_.param("particle_size", particle_size_, 100);
+  private_nh_.param("particle_size", particle_size_, 50);
   private_nh_.param("xmin", xmin_, -10.0);
   private_nh_.param("ymin", ymin_, -10.0);
   private_nh_.param("zmin", zmin_, -1.0);
@@ -248,7 +248,7 @@ void ThreeDOGMappingNode::init()
 
 void ThreeDOGMappingNode::startLiveSlam()
 {
-  point_cloud_sub_ = nh_.subscribe("hokuyo3d/hokuyo_cloud", 0, &ThreeDOGMappingNode::pointcloudCallback, this);
+  point_cloud_sub_ = nh_.subscribe("hokuyo3d/hokuyo_cloud", 1000, &ThreeDOGMappingNode::pointcloudCallback, this);
   
   transform_thread_ = new boost::thread(boost::bind(&ThreeDOGMappingNode::publishLoop, this, transform_publish_period_));
 
@@ -358,7 +358,7 @@ ThreeDOGMappingNode::getOdomPose(tf::Pose& pose, const ros::Time& t)
     return false;
   }
 
-  pose = odom_pose;
+  pose = tf::Pose(tf::createQuaternionFromRPY(0 ,0 ,tf::getYaw(odom_pose.getRotation())), odom_pose.getOrigin());
 
   return true;
 }
@@ -374,8 +374,7 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
   pcl::PointCloud<pcl::PointXYZ>::Ptr voxel_cloud (new pcl::PointCloud<pcl::PointXYZ>);
   pcl::VoxelGrid<pcl::PointXYZ> vg;
   vg.setInputCloud (pcl_point_cloud);
-  // vg.setLeafSize (0.025, 0.025, 0.025);
-  vg.setLeafSize (0.05, 0.05, 0.05);
+  vg.setLeafSize (0.025, 0.025, 0.025);
   vg.filter (*voxel_cloud);
 
   static tf::Transform base_to_global;
@@ -487,30 +486,30 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
     map_to_odom_ = (odom_to_base * base_to_map).inverse();
     map_to_odom_mutex_.unlock();
     
-    // ROS_INFO("publish map");
-    // sensor_msgs::PointCloud pc_msg;
-    // pc_msg.points.clear();
-    // for (int x=0; x < particles_.at(best).map.getMapSizeX(); x++) {
-    //   for (int y=0; y < particles_.at(best).map.getMapSizeY(); y++) {
-    //     for (int z=0; z < particles_.at(best).map.getMapSizeZ(); z++){
-    //       ThreeDOGMapping::IntPoint p(x, y, z);
-    //       double occ=particles_.at(best).map.cell(p);
-    //       assert(occ <= 1.0);
-    //       if(occ > 0.25) {
-    //         ThreeDOGMapping::Point pc_p = particles_.at(best).map.map2world(x,y,z);
-    //         
-    //         geometry_msgs::Point32 p_msg;
-    //         p_msg.x = pc_p.x;
-    //         p_msg.y = pc_p.y;
-    //         p_msg.z = pc_p.z;
-    //         pc_msg.points.push_back(p_msg);
-    //       }
-    //     }
-    //   }
-    // }
-    // pc_msg.header.stamp = ros::Time::now();
-    // pc_msg.header.frame_id = global_frame_id_;
-    // test_pub_3_.publish(pc_msg);
+    ROS_INFO("publish map");
+    sensor_msgs::PointCloud pc_msg;
+    pc_msg.points.clear();
+    for (int x=0; x < particles_.at(best).map.getMapSizeX(); x++) {
+      for (int y=0; y < particles_.at(best).map.getMapSizeY(); y++) {
+        for (int z=0; z < particles_.at(best).map.getMapSizeZ(); z++){
+          ThreeDOGMapping::IntPoint p(x, y, z);
+          double occ=particles_.at(best).map.cell(p);
+          assert(occ <= 1.0);
+          if(occ > 0.25) {
+            ThreeDOGMapping::Point pc_p = particles_.at(best).map.map2world(x,y,z);
+            
+            geometry_msgs::Point32 p_msg;
+            p_msg.x = pc_p.x;
+            p_msg.y = pc_p.y;
+            p_msg.z = pc_p.z;
+            pc_msg.points.push_back(p_msg);
+          }
+        }
+      }
+    }
+    pc_msg.header.stamp = ros::Time::now();
+    pc_msg.header.frame_id = global_frame_id_;
+    test_pub_3_.publish(pc_msg);
   }
   
   if(first_time == true) first_time = false;

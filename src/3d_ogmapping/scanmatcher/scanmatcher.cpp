@@ -63,7 +63,7 @@ void ScanMatcher::computeActiveArea(ScanMatcherMap& map, const tf::Pose& p, cons
 
 	 for (int i=0; i < point_cloud.size(); i++){
      double r = std::sqrt(std::pow(std::sqrt(std::pow(rotation_point_cloud.points.at(i).x,2)+std::pow(rotation_point_cloud.points.at(i).y,2)),2)+std::pow(rotation_point_cloud.points.at(i).z,2));
-	 	 if (r>15.0) continue;
+	 	 if (r>19.0) continue;
 	 	 if (rotation_point_cloud.points.at(i).x<min.x) min.x=rotation_point_cloud.points.at(i).x;
 	 	 if (rotation_point_cloud.points.at(i).y<min.y) min.y=rotation_point_cloud.points.at(i).y;
      if (rotation_point_cloud.points.at(i).z<min.z) min.z=rotation_point_cloud.points.at(i).z;
@@ -112,7 +112,7 @@ void ScanMatcher::computeActiveArea(ScanMatcherMap& map, const tf::Pose& p, cons
 			// }
 		} else {
       double r = std::sqrt(std::pow(std::sqrt(std::pow(rotation_point_cloud.points.at(i).x,2)+std::pow(rotation_point_cloud.points.at(i).y,2)),2)+std::pow(rotation_point_cloud.points.at(i).z,2));
-		  if (r>15) continue;
+		  if (r>19) continue;
 			IntPoint p1=map.world2map(rotation_point_cloud.points.at(i).x,rotation_point_cloud.points.at(i).y,rotation_point_cloud.points.at(i).z);
 			assert(p1.x>=0 && p1.y>=0 && p1.z >=0);
 			IntPoint cp=map.storage().patchIndexes(p1);
@@ -167,7 +167,7 @@ double ScanMatcher::registerScan(ScanMatcherMap& map, const tf::Pose& p, const p
 			// }
 		} else {
       double r = std::sqrt(std::pow(std::sqrt(std::pow(rotation_point_cloud.points.at(i).x,2)+std::pow(rotation_point_cloud.points.at(i).y,2)),2)+std::pow(rotation_point_cloud.points.at(i).z,2));
-			if (r>15) continue;
+			if (r>19) continue;
 			IntPoint p1=map.world2map(rotation_point_cloud.points.at(i).x,rotation_point_cloud.points.at(i).y,rotation_point_cloud.points.at(i).z);
 			assert(p1.x>=0 && p1.y>=0 && p1.z >=0);
 			map.cell(p1).update(true,Point(rotation_point_cloud.points.at(i).x,rotation_point_cloud.points.at(i).y,rotation_point_cloud.points.at(i).z));
@@ -183,7 +183,7 @@ double ScanMatcher::optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf:
 	double currentScore=score(map, currentPose, point_cloud, base_to_global);
 	double adelta=m_optAngularDelta, ldelta=m_optLinearDelta;
 	unsigned int refinement=0;
-	enum Move{Front, Back, Left, Right, Up, Down,  RollPlus, RollMinus, PitchPlus, PitchMinus, YawPlus, YawMinus, Done};
+	enum Move{Front, Back, Left, Right, TurnLeft, TurnRight, Done};
 	do{
 		if (bestScore>=currentScore){
 			refinement++;
@@ -222,37 +222,13 @@ double ScanMatcher::optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf:
 					break;
 				case Right:
 					localPose.y+=ldelta;
-					move=Up;
+					move=TurnLeft;
 					break;
-        case Up:
-          localPose.z+=ldelta;
-          move=Down;
-          break;
-        case Down:
-          localPose.z-=ldelta;
-          move=RollPlus;
-          break;
-        case RollPlus:
-          localPose.roll+=adelta;
-          move=RollMinus;
-          break;
-        case RollMinus:
-          localPose.roll-=adelta;
-          move=PitchPlus;
-          break;
-        case PitchPlus:
-          localPose.pitch+=adelta;
-          move=PitchMinus;
-          break;
-        case PitchMinus:
-          localPose.pitch-=adelta;
-          move=YawPlus;
-          break;
-        case YawPlus:
+        case TurnLeft:
           localPose.yaw+=adelta;
-          move=YawMinus;
+          move=TurnRight;
           break;
-        case YawMinus:
+        case TurnRight:
           localPose.yaw-=adelta;
           move=Done;
           break;
