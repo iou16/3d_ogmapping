@@ -91,7 +91,7 @@ inline double ScanMatcher::score(const ScanMatcherMap& map, const tf::Pose& p, c
   
   for (int i=0; i < point_cloud.size(); i++){
     double r = std::sqrt(std::pow(std::sqrt(std::pow(phit_cloud.points.at(i).x,2)+std::pow(phit_cloud.points.at(i).y,2)),2)+std::pow(phit_cloud.points.at(i).z,2));
-	 	if (r>15.0) continue;
+	 	if (r>19.0) continue;
     Point phit(phit_cloud.points.at(i).x,phit_cloud.points.at(i).y,phit_cloud.points.at(i).z);
     Point pfree(pfree_cloud.points.at(i).x,pfree_cloud.points.at(i).y,pfree_cloud.points.at(i).z);
 		IntPoint iphit=map.world2map(phit_cloud.points.at(i).x,phit_cloud.points.at(i).y,phit_cloud.points.at(i).z);
@@ -161,7 +161,7 @@ inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, const 
   
   for (int i=0; i < point_cloud.size(); i++){
     double r = std::sqrt(std::pow(std::sqrt(std::pow(phit_cloud.points.at(i).x,2)+std::pow(phit_cloud.points.at(i).y,2)),2)+std::pow(phit_cloud.points.at(i).z,2));
-	 	if (r>15.0) continue;
+	 	if (r>19.0) continue;
     Point phit(phit_cloud.points.at(i).x,phit_cloud.points.at(i).y,phit_cloud.points.at(i).z);
     Point pfree(pfree_cloud.points.at(i).x,pfree_cloud.points.at(i).y,pfree_cloud.points.at(i).z);
 		IntPoint iphit=map.world2map(phit_cloud.points.at(i).x,phit_cloud.points.at(i).y,phit_cloud.points.at(i).z);
