@@ -24,8 +24,8 @@ namespace ThreeDOGMapping {
 	tf::Pose MotionModel::drawFromMotion(tf::Pose& p, tf::Transform base_to_global) 
 		{
 			double sxy=0.3*srr;
-			delta_x+=sampleGaussian(srr*fabs(delta_x)+str*fabs(delta_y)+sxy*fabs(delta_yaw));
-			delta_y+=sampleGaussian(srr*fabs(delta_y)+str*fabs(delta_x)+sxy*fabs(delta_yaw));
+			delta_x+=sampleGaussian(srr*fabs(delta_x)+str*fabs(delta_yaw)+sxy*fabs(delta_y));
+			delta_y+=sampleGaussian(srr*fabs(delta_y)+str*fabs(delta_yaw)+sxy*fabs(delta_x));
 			delta_yaw+=sampleGaussian(stt*fabs(delta_yaw)+srt*dxy);
 			delta_yaw=fmod(delta_yaw, 2*M_PI);
 			if (delta_yaw>M_PI)
