@@ -232,14 +232,14 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("linerThreshold", linerThreshold_, 1.0);
   private_nh_.param("angularThreshold", angularThreshold_, 0.5);
   private_nh_.param("resampleThreshold", resampleThreshold_, 0.5);
-  private_nh_.param("particle_size", particle_size_, 50);
+  private_nh_.param("particle_size", particle_size_, 100);
   private_nh_.param("xmin", xmin_, -10.0);
   private_nh_.param("ymin", ymin_, -10.0);
   private_nh_.param("zmin", zmin_, -1.0);
   private_nh_.param("xmax", xmax_, 10.0);
   private_nh_.param("ymax", ymax_, 10.0);
   private_nh_.param("zmax", zmax_, 1.0);
-  private_nh_.param("delta", delta_, 0.1);
+  private_nh_.param("delta", delta_, 0.01);
 
   private_nh_.param("tf_delay", tf_delay_, transform_publish_period_);
 
