@@ -193,20 +193,14 @@ double ScanMatcher::optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf:
 		bestScore=currentScore;
 		tf::Pose bestLocalPose=currentPose;
 
-    double current_roll, current_pitch, current_yaw;
-    tf::Matrix3x3 current_mat = currentPose.getBasis();
-    current_mat.getRPY(current_roll, current_pitch, current_yaw);
-    current_roll = atan2(sin(current_roll), cos(current_roll));
-    current_pitch = atan2(sin(current_pitch), cos(current_pitch));
+    double current_yaw = tf::getYaw(currentPose.getRotation());
     current_yaw = atan2(sin(current_yaw), cos(current_yaw));
 
-    Pose localPose(currentPose.getOrigin().x(),currentPose.getOrigin().y(),currentPose.getOrigin().z(),
-                    current_roll, current_pitch, current_yaw);
+    Pose localPose(currentPose.getOrigin().x(),currentPose.getOrigin().y(),0,0,0,current_yaw);
 
 		Move move=Front;
 		do {
-			localPose=Pose(currentPose.getOrigin().x(),currentPose.getOrigin().y(),currentPose.getOrigin().z(),
-                     current_roll, current_pitch, current_yaw);
+			localPose=Pose(currentPose.getOrigin().x(),currentPose.getOrigin().y(),0,0,0,current_yaw);
 			switch(move){
 				case Front:
 					localPose.x+=ldelta;
@@ -236,10 +230,10 @@ double ScanMatcher::optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf:
 			}
 			
 			double odo_gain=1;
-			double localScore=odo_gain*score(map, tf::Pose(tf::createQuaternionFromRPY(localPose.roll,localPose.pitch,localPose.yaw),tf::Vector3(localPose.x,localPose.y,localPose.z)), point_cloud, base_to_global);
+			double localScore=odo_gain*score(map, tf::Pose(tf::createQuaternionFromRPY(0,0,localPose.yaw),tf::Vector3(localPose.x,localPose.y,0)), point_cloud, base_to_global);
 			if (localScore>currentScore){
 				currentScore=localScore;
-				bestLocalPose=tf::Pose(tf::createQuaternionFromRPY(localPose.roll,localPose.pitch,localPose.yaw),tf::Vector3(localPose.x,localPose.y,localPose.z));
+				bestLocalPose=tf::Pose(tf::createQuaternionFromRPY(0,0,localPose.yaw),tf::Vector3(localPose.x,localPose.y,0));
 			}
 		} while(move!=Done);
 		currentPose=bestLocalPose;

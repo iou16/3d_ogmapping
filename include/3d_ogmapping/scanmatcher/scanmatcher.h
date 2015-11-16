@@ -141,6 +141,7 @@ inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, const 
 		point_cloud_.points.at(i).y = ((r-freeDelta)*co) * sin(atan2(point_cloud.points.at(i).y,point_cloud.points.at(i).x));
     point_cloud_.points.at(i).z = (r-freeDelta)*si; 
   }
+  std::cout << point_cloud.size() << std::endl;
 
   tf::Pose lp;
   lp.setOrigin(p.getOrigin()+(base_to_global * m_3DLIDARPose.getOrigin()));
