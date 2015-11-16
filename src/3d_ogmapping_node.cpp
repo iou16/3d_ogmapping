@@ -397,11 +397,7 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
   tf::Pose move;
   move.setOrigin((relPose.getOrigin() - odoPose_.getOrigin()));
   move.setRotation(relPose.getRotation() * odoPose_.getRotation().inverse());
-	double move_roll, move_pitch, move_yaw;
-  tf::Matrix3x3 move_mat =  move.getBasis();
-  move_mat.getRPY(move_roll, move_pitch, move_yaw);
-  move_roll = atan2(sin(move_roll), cos(move_roll));
-  move_pitch = atan2(sin(move_pitch), cos(move_pitch));
+	double  move_yaw = tf::getYaw(move.getRotation());
   move_yaw = atan2(sin(move_yaw), cos(move_yaw));
 
   linerDistance_+=std::sqrt(move.getOrigin().distance(tf::Vector3(0,0,0)));
