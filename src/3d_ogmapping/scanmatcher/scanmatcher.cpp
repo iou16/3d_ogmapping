@@ -41,11 +41,12 @@ void ScanMatcher::invalidateActiveArea(){
 	m_activeAreaComputed=false;
 }
 
-void ScanMatcher::computeActiveArea(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global){
+void ScanMatcher::computeActiveArea(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud){
 	if (m_activeAreaComputed)
 		return;
   tf::Pose lp;
-  lp.setOrigin(p.getOrigin()+(base_to_global * m_3DLIDARPose.getOrigin()));
+  tf::Transform base_to_global_ = tf::Transform(p.getRotation());
+  lp.setOrigin(p.getOrigin()+(base_to_global_ * m_3DLIDARPose.getOrigin()));
   lp.setRotation(p.getRotation() * m_3DLIDARPose.getRotation());
 	IntPoint p0=map.world2map(Point(lp.getOrigin().x(),lp.getOrigin().y(),lp.getOrigin().z()));
   Point min(map.map2world(0,0,0));
@@ -124,14 +125,15 @@ void ScanMatcher::computeActiveArea(ScanMatcherMap& map, const tf::Pose& p, cons
 	m_activeAreaComputed=true;
 }
 
-double ScanMatcher::registerScan(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global){
+double ScanMatcher::registerScan(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud){
 	if (!m_activeAreaComputed)
-		computeActiveArea(map, p, point_cloud, base_to_global);
+		computeActiveArea(map, p, point_cloud);
 		
 	map.storage().allocActiveArea();
 	
   tf::Pose lp;
-  lp.setOrigin(p.getOrigin()+(base_to_global * m_3DLIDARPose.getOrigin()));
+  tf::Transform base_to_global_ = tf::Transform(p.getRotation());
+  lp.setOrigin(p.getOrigin()+(base_to_global_ * m_3DLIDARPose.getOrigin()));
   lp.setRotation(p.getRotation() * m_3DLIDARPose.getRotation());
 	IntPoint p0=map.world2map(Point(lp.getOrigin().x(),lp.getOrigin().y(),lp.getOrigin().z()));
 

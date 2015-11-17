@@ -21,7 +21,7 @@ namespace ThreeDOGMapping {
 			dxy=sqrt(delta_x*delta_x+delta_y*delta_y);
     }
 
-	tf::Pose MotionModel::drawFromMotion(tf::Pose& p, tf::Transform base_to_global) 
+	tf::Pose MotionModel::drawFromMotion(tf::Pose& p) 
 		{
 			double sxy=0.3*srr;
 			delta_x+=sampleGaussian(srr*fabs(delta_x)+str*fabs(delta_yaw)+sxy*fabs(delta_y));
@@ -32,7 +32,8 @@ namespace ThreeDOGMapping {
 				delta_yaw-=2*M_PI;
 
    		tf::Pose noisy_pose(tf::createQuaternionFromRPY(0,0,delta_yaw),tf::Vector3(delta_x,delta_y,0));
-      noisy_pose.setOrigin(base_to_global * noisy_pose.getOrigin());
+      tf::Transform base_to_global_ = tf::Transform(p.getRotation());
+      noisy_pose.setOrigin(base_to_global_ * noisy_pose.getOrigin());
       p.setOrigin(p.getOrigin() + noisy_pose.getOrigin());
       p.setRotation(p.getRotation() * noisy_pose.getRotation());
 

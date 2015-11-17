@@ -34,11 +34,11 @@ class ScanMatcher{
 			(int kernsize, double lopt, double aopt, int iterations, double sigma, double likelihoodSigma=1);
     double optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf::Pose& init, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const;
 		void invalidateActiveArea();
-		void computeActiveArea(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global);
-		double registerScan(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global);
+		void computeActiveArea(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud);
+		double registerScan(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud);
 
 		inline double score(const ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const;
-    inline unsigned int likelihoodAndScore(double& s, double& l, const ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const;
+    inline unsigned int likelihoodAndScore(double& s, double& l, const ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud) const;
 		
 		static const double nullLikelihood;
 	protected:
@@ -127,7 +127,7 @@ inline double ScanMatcher::score(const ScanMatcherMap& map, const tf::Pose& p, c
 	return s;
 }
 
-inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, const ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const{
+inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, const ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud) const{
 	l=0;
 	s=0;
 	double freeDelta=map.getDelta()*m_freeCellRatio;
@@ -144,7 +144,8 @@ inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, const 
   std::cout << point_cloud.size() << std::endl;
 
   tf::Pose lp;
-  lp.setOrigin(p.getOrigin()+(base_to_global * m_3DLIDARPose.getOrigin()));
+  tf::Transform base_to_global_ = tf::Transform(p.getRotation());
+  lp.setOrigin(p.getOrigin()+(base_to_global_ * m_3DLIDARPose.getOrigin()));
   lp.setRotation(p.getRotation() * m_3DLIDARPose.getRotation());
 
 	double noHit=nullLikelihood/(m_likelihoodSigma);
