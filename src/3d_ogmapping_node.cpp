@@ -21,6 +21,7 @@
 
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_cloud.h>
+#include <pcl/PCLPointCloud2.h>
 #include <pcl/point_types.h>
 #include <pcl/PCLPointCloud2.h>
 #include <pcl/filters/voxel_grid.h>
@@ -250,8 +251,8 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("str", str_, 0.05);
   private_nh_.param("stt", stt_, 0.1);
 
-  private_nh_.param("linerThreshold", linerThreshold_, 0.5);
-  private_nh_.param("angularThreshold", angularThreshold_, 0.25);
+  private_nh_.param("linerThreshold", linerThreshold_, 0.0);
+  private_nh_.param("angularThreshold", angularThreshold_, 0.0);
   private_nh_.param("resampleThreshold", resampleThreshold_, 0.5);
   private_nh_.param("particle_size", particle_size_, 100);
   private_nh_.param("xmin", xmin_, -10.0);
@@ -260,7 +261,7 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("xmax", xmax_, 10.0);
   private_nh_.param("ymax", ymax_, 10.0);
   private_nh_.param("zmax", zmax_, 1.0);
-  private_nh_.param("delta", delta_, 0.1);
+  private_nh_.param("delta", delta_, 0.05);
 
   private_nh_.param("tf_delay", tf_delay_, transform_publish_period_);
 
@@ -332,7 +333,28 @@ void ThreeDOGMappingNode::startReplay(const std::string & bag_fname, std::string
       this->pointcloudCallback(s_queue.front());
       s_queue.pop();
     }
+    
   }
+  int best = getBestParticleIndex();
+  ROS_INFO("save map");
+  pcl::PointCloud<pcl::PointXYZ> pc_msg;
+  pc_msg.clear();
+  for (int x=0; x < particles_.at(best).map.getMapSizeX(); x++) {
+    for (int y=0; y < particles_.at(best).map.getMapSizeY(); y++) {
+      for (int z=0; z < particles_.at(best).map.getMapSizeZ(); z++){
+        ThreeDOGMapping::IntPoint p(x, y, z);
+        double occ=particles_.at(best).map.cell(p);
+        assert(occ <= 1.0);
+        if(occ > 0.25) {
+          ThreeDOGMapping::Point pc_p = particles_.at(best).map.map2world(x,y,z);
+          
+          pcl::PointXYZ p_msg(pc_p.x,pc_p.y,pc_p.z);
+          pc_msg.push_back(p_msg);
+        }
+      }
+    }
+  }
+  pcl::io::savePCDFile("3d_map.pcd", pc_msg);
 
   bag.close();
 }
@@ -556,6 +578,7 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
     // pc_msg.header.stamp = ros::Time::now();
     // pc_msg.header.frame_id = global_frame_id_;
     // test_pub_3_.publish(pc_msg);
+    
   }
   
   if(first_time == true) first_time = false;
