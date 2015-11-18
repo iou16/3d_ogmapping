@@ -251,8 +251,8 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("str", str_, 0.05);
   private_nh_.param("stt", stt_, 0.1);
 
-  private_nh_.param("linerThreshold", linerThreshold_, 0.0);
-  private_nh_.param("angularThreshold", angularThreshold_, 0.0);
+  private_nh_.param("linerThreshold", linerThreshold_, 0.5);
+  private_nh_.param("angularThreshold", angularThreshold_, 0.25);
   private_nh_.param("resampleThreshold", resampleThreshold_, 0.5);
   private_nh_.param("particle_size", particle_size_, 100);
   private_nh_.param("xmin", xmin_, -10.0);
@@ -261,7 +261,7 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("xmax", xmax_, 10.0);
   private_nh_.param("ymax", ymax_, 10.0);
   private_nh_.param("zmax", zmax_, 1.0);
-  private_nh_.param("delta", delta_, 0.05);
+  private_nh_.param("delta", delta_, 0.1);
 
   private_nh_.param("tf_delay", tf_delay_, transform_publish_period_);
 
@@ -354,7 +354,7 @@ void ThreeDOGMappingNode::startReplay(const std::string & bag_fname, std::string
       }
     }
   }
-  pcl::io::savePCDFile("3d_map.pcd", pc_msg);
+  pcl::io::savePCDFile("3d_map2.pcd", pc_msg);
 
   bag.close();
 }
@@ -405,7 +405,7 @@ ThreeDOGMappingNode::initMapper(const ros::Time& t)
   linerDistance_=angularDistance_=0;
 
   tf::Stamped<tf::Pose> ident (tf::Transform(tf::createQuaternionFromRPY(0,0,0),
-                                           tf::Vector3(0,0,0)), t, "hokuyo3d");
+                                           tf::Vector3(0,0,0)), t, "hokuyo3d_link");
   tf::Stamped<tf::Pose> lpose;
   try
   {
