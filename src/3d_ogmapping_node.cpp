@@ -246,22 +246,22 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("astep", astep_, 0.05);
   private_nh_.param("iterations", iterations_, 5);
   private_nh_.param("lsigma", lsigma_, 0.075);
-  private_nh_.param("srr", srr_, 0.05);
-  private_nh_.param("srt", srt_, 0.1);
-  private_nh_.param("str", str_, 0.05);
+  private_nh_.param("srr", srr_, 0.15);
+  private_nh_.param("srt", srt_, 0.08);
+  private_nh_.param("str", str_, 0.08);
   private_nh_.param("stt", stt_, 0.1);
 
   private_nh_.param("linerThreshold", linerThreshold_, 0.5);
   private_nh_.param("angularThreshold", angularThreshold_, 0.25);
   private_nh_.param("resampleThreshold", resampleThreshold_, 0.5);
-  private_nh_.param("particle_size", particle_size_, 100);
+  private_nh_.param("particle_size", particle_size_, 200);
   private_nh_.param("xmin", xmin_, -10.0);
   private_nh_.param("ymin", ymin_, -10.0);
   private_nh_.param("zmin", zmin_, -1.0);
   private_nh_.param("xmax", xmax_, 10.0);
   private_nh_.param("ymax", ymax_, 10.0);
   private_nh_.param("zmax", zmax_, 1.0);
-  private_nh_.param("delta", delta_, 0.1);
+  private_nh_.param("delta", delta_, 0.2);
 
   private_nh_.param("tf_delay", tf_delay_, transform_publish_period_);
 
@@ -491,14 +491,14 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
 
   odoPose_ = relPose;
 
-  // geometry_msgs::PoseArray cloud_msg;
-  // cloud_msg.header.stamp = ros::Time::now();
-  // cloud_msg.header.frame_id = global_frame_id_;
-  // cloud_msg.poses.resize(particles_.size());
-  // for(int i=0; i<particles_.size(); i++){
-  //   tf::poseTFToMsg(tf::Pose(particles_.at(i).pose_.getRotation(), particles_.at(i).pose_.getOrigin()), cloud_msg.poses[i]);
-  // }
-  // test_pub_2_.publish(cloud_msg);
+  geometry_msgs::PoseArray cloud_msg;
+  cloud_msg.header.stamp = ros::Time::now();
+  cloud_msg.header.frame_id = global_frame_id_;
+  cloud_msg.poses.resize(particles_.size());
+  for(int i=0; i<particles_.size(); i++){
+    tf::poseTFToMsg(tf::Pose(particles_.at(i).pose_.getRotation(), particles_.at(i).pose_.getOrigin()), cloud_msg.poses[i]);
+  }
+  test_pub_2_.publish(cloud_msg);
 
   if (first_time || linerDistance_>linerThreshold_ || angularDistance_ >angularThreshold_) {
     if (first_time) {
@@ -516,25 +516,25 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
       ROS_INFO("scanMatch");
       scanMatch(*voxel_cloud);
 
-      // geometry_msgs::PoseStamped ps_msg;
-      // ps_msg.header.stamp = ros::Time::now();
-      // ps_msg.header.frame_id = global_frame_id_;
-      // tf::poseTFToMsg(tf::Pose(particles_.at(getBestParticleIndex()).pose_.getRotation(), particles_.at(getBestParticleIndex()).pose_.getOrigin()), ps_msg.pose);
-      // test_pub_4_.publish(ps_msg);
+      geometry_msgs::PoseStamped ps_msg;
+      ps_msg.header.stamp = ros::Time::now();
+      ps_msg.header.frame_id = global_frame_id_;
+      tf::poseTFToMsg(tf::Pose(particles_.at(getBestParticleIndex()).pose_.getRotation(), particles_.at(getBestParticleIndex()).pose_.getOrigin()), ps_msg.pose);
+      test_pub_4_.publish(ps_msg);
 
       updateTreeWeights(false);
 
       ROS_INFO("resample");
       resample(*voxel_cloud);
       
-      // geometry_msgs::PoseArray cloud_msg;
-      // cloud_msg.header.stamp = ros::Time::now();
-      // cloud_msg.header.frame_id = global_frame_id_;
-      // cloud_msg.poses.resize(particles_.size());
-      // for(int i=0; i<particles_.size(); i++){
-      //   tf::poseTFToMsg(tf::Pose(particles_.at(i).pose_.getRotation(), particles_.at(i).pose_.getOrigin()), cloud_msg.poses[i]);
-      // }
-      // test_pub_2_.publish(cloud_msg);
+      geometry_msgs::PoseArray cloud_msg;
+      cloud_msg.header.stamp = ros::Time::now();
+      cloud_msg.header.frame_id = global_frame_id_;
+      cloud_msg.poses.resize(particles_.size());
+      for(int i=0; i<particles_.size(); i++){
+        tf::poseTFToMsg(tf::Pose(particles_.at(i).pose_.getRotation(), particles_.at(i).pose_.getOrigin()), cloud_msg.poses[i]);
+      }
+      test_pub_2_.publish(cloud_msg);
     }
 
     updateTreeWeights(false);
@@ -554,30 +554,30 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
     map_to_odom_ = (odom_to_base * base_to_map).inverse();
     map_to_odom_mutex_.unlock();
     
-    // ROS_INFO("publish map");
-    // sensor_msgs::PointCloud pc_msg;
-    // pc_msg.points.clear();
-    // for (int x=0; x < particles_.at(best).map.getMapSizeX(); x++) {
-    //   for (int y=0; y < particles_.at(best).map.getMapSizeY(); y++) {
-    //     for (int z=0; z < particles_.at(best).map.getMapSizeZ(); z++){
-    //       ThreeDOGMapping::IntPoint p(x, y, z);
-    //       double occ=particles_.at(best).map.cell(p);
-    //       assert(occ <= 1.0);
-    //       if(occ > 0.25) {
-    //         ThreeDOGMapping::Point pc_p = particles_.at(best).map.map2world(x,y,z);
-    //         
-    //         geometry_msgs::Point32 p_msg;
-    //         p_msg.x = pc_p.x;
-    //         p_msg.y = pc_p.y;
-    //         p_msg.z = pc_p.z;
-    //         pc_msg.points.push_back(p_msg);
-    //       }
-    //     }
-    //   }
-    // }
-    // pc_msg.header.stamp = ros::Time::now();
-    // pc_msg.header.frame_id = global_frame_id_;
-    // test_pub_3_.publish(pc_msg);
+    ROS_INFO("publish map");
+    sensor_msgs::PointCloud pc_msg;
+    pc_msg.points.clear();
+    for (int x=0; x < particles_.at(best).map.getMapSizeX(); x++) {
+      for (int y=0; y < particles_.at(best).map.getMapSizeY(); y++) {
+        for (int z=0; z < particles_.at(best).map.getMapSizeZ(); z++){
+          ThreeDOGMapping::IntPoint p(x, y, z);
+          double occ=particles_.at(best).map.cell(p);
+          assert(occ <= 1.0);
+          if(occ > 0.25) {
+            ThreeDOGMapping::Point pc_p = particles_.at(best).map.map2world(x,y,z);
+            
+            geometry_msgs::Point32 p_msg;
+            p_msg.x = pc_p.x;
+            p_msg.y = pc_p.y;
+            p_msg.z = pc_p.z;
+            pc_msg.points.push_back(p_msg);
+          }
+        }
+      }
+    }
+    pc_msg.header.stamp = ros::Time::now();
+    pc_msg.header.frame_id = global_frame_id_;
+    test_pub_3_.publish(pc_msg);
     
   }
   
@@ -772,62 +772,62 @@ int ThreeDOGMappingNode::getBestParticleIndex() const{
 }
 
 
-// int
-// main(int argc, char** argv)
-// {
-//   ros::init(argc, argv, "threedogmapping");
-// 
-//   ThreeDOGMappingNode tdogmn;
-//   tdogmn.startLiveSlam();
-// 	ros::spin();
-// 
-//   return 0;
-// }
-
 int
 main(int argc, char** argv)
 {
-    namespace po = boost::program_options; 
-    po::options_description desc("Options"); 
-    desc.add_options() 
-    ("help", "Print help messages") 
-    ("point_cloud_topic",  po::value<std::string>()->default_value("/hokuyo3d/hokuyo_cloud") ,"topic that contains the point_cloud in the rosbag")
-    ("bag_filename", po::value<std::string>()->required(), "ros bag filename") 
-    ("seed", po::value<unsigned long int>()->default_value(0), "seed")
-    ("max_duration_buffer", po::value<unsigned long int>()->default_value(999999), "max tf buffer duration") ;
-    
-    po::variables_map vm; 
-    try 
-    { 
-        po::store(po::parse_command_line(argc, argv, desc),  
-                  vm); 
-        
-        if ( vm.count("help")  ) 
-        { 
-            std::cout << "Basic Command Line Parameter App" << std::endl 
-            << desc << std::endl; 
-            return 0; 
-        } 
-        
-        po::notify(vm); 
-    } 
-    catch(po::error& e) 
-    { 
-        std::cerr << "ERROR: " << e.what() << std::endl << std::endl; 
-        std::cerr << desc << std::endl; 
-        return -1; 
-    } 
-    
-    std::string bag_fname = vm["bag_filename"].as<std::string>();
-    std::string scan_topic = vm["point_cloud_topic"].as<std::string>();
-    unsigned long int seed = vm["seed"].as<unsigned long int>();
-    unsigned long int max_duration_buffer = vm["max_duration_buffer"].as<unsigned long int>();
-    
-    ros::init(argc, argv, "threedogmapping");
-    ThreeDOGMappingNode tdogmn(seed, max_duration_buffer) ;
-    tdogmn.startReplay(bag_fname, scan_topic);
-    ROS_INFO("replay stopped.");
+  ros::init(argc, argv, "threedogmapping");
 
-    ros::spin();
-    return(0);
+  ThreeDOGMappingNode tdogmn;
+  tdogmn.startLiveSlam();
+	ros::spin();
+
+  return 0;
 }
+
+// int
+// main(int argc, char** argv)
+// {
+//     namespace po = boost::program_options; 
+//     po::options_description desc("Options"); 
+//     desc.add_options() 
+//     ("help", "Print help messages") 
+//     ("point_cloud_topic",  po::value<std::string>()->default_value("/hokuyo3d/hokuyo_cloud") ,"topic that contains the point_cloud in the rosbag")
+//     ("bag_filename", po::value<std::string>()->required(), "ros bag filename") 
+//     ("seed", po::value<unsigned long int>()->default_value(0), "seed")
+//     ("max_duration_buffer", po::value<unsigned long int>()->default_value(999999), "max tf buffer duration") ;
+//     
+//     po::variables_map vm; 
+//     try 
+//     { 
+//         po::store(po::parse_command_line(argc, argv, desc),  
+//                   vm); 
+//         
+//         if ( vm.count("help")  ) 
+//         { 
+//             std::cout << "Basic Command Line Parameter App" << std::endl 
+//             << desc << std::endl; 
+//             return 0; 
+//         } 
+//         
+//         po::notify(vm); 
+//     } 
+//     catch(po::error& e) 
+//     { 
+//         std::cerr << "ERROR: " << e.what() << std::endl << std::endl; 
+//         std::cerr << desc << std::endl; 
+//         return -1; 
+//     } 
+//     
+//     std::string bag_fname = vm["bag_filename"].as<std::string>();
+//     std::string scan_topic = vm["point_cloud_topic"].as<std::string>();
+//     unsigned long int seed = vm["seed"].as<unsigned long int>();
+//     unsigned long int max_duration_buffer = vm["max_duration_buffer"].as<unsigned long int>();
+//     
+//     ros::init(argc, argv, "threedogmapping");
+//     ThreeDOGMappingNode tdogmn(seed, max_duration_buffer) ;
+//     tdogmn.startReplay(bag_fname, scan_topic);
+//     ROS_INFO("replay stopped.");
+// 
+//     ros::spin();
+//     return(0);
+// }

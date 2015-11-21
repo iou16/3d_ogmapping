@@ -16,7 +16,7 @@
     <remap from="scan" to="$(arg scan_topic)"/>
   </node>
 
-  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find orne_navigation_executor)/rviz_cfg/nav.rviz"/>
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find threedogmapping)/rviz_cfg/3d_ogmapping.rviz"/>
 
 </launch>
 

@@ -15,8 +15,8 @@ ScanMatcher::ScanMatcher(): m_3DLIDARPose(tf::Transform(tf::createQuaternionFrom
 	m_linearOdometryReliability=0.;
 	m_freeCellRatio=sqrt(3.);
 
-  // ros::NodeHandle nh;
-  // test_pub = nh.advertise<sensor_msgs::PointCloud>("pfreecloud", 2, true);
+  ros::NodeHandle nh;
+  test_pub = nh.advertise<sensor_msgs::PointCloud>("pfreecloud", 2, true);
 }
 
 void ScanMatcher::set3DLIDARPose(const tf::Pose& lpose){
