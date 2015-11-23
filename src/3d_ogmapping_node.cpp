@@ -246,9 +246,9 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("astep", astep_, 0.05);
   private_nh_.param("iterations", iterations_, 5);
   private_nh_.param("lsigma", lsigma_, 0.075);
-  private_nh_.param("srr", srr_, 0.15);
-  private_nh_.param("srt", srt_, 0.08);
-  private_nh_.param("str", str_, 0.08);
+  private_nh_.param("srr", srr_, 0.1);
+  private_nh_.param("srt", srt_, 0.05);
+  private_nh_.param("str", str_, 0.05);
   private_nh_.param("stt", stt_, 0.1);
 
   private_nh_.param("linerThreshold", linerThreshold_, 0.5);
@@ -477,7 +477,8 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
   ROS_INFO("sampling");
   motionmodel_.setMotion(relPose, odoPose_);
   for (ParticleVector::iterator it=particles_.begin(); it!=particles_.end(); it++){
-     motionmodel_.drawFromMotion(it->pose_);
+     // motionmodel_.drawFromMotion(it->pose_);
+     motionmodel_.updateAction(it->pose_);
   }
 
   tf::Pose move;
