@@ -49,6 +49,8 @@
 
 #include <boost/program_options.hpp>
 
+#include <std_msgs/Float32.h>
+
 class ThreeDOGMappingNode
 {
   struct TNode{
@@ -128,6 +130,7 @@ class ThreeDOGMappingNode
     ros::Publisher test_pub_2_;
     ros::Publisher test_pub_3_;
     ros::Publisher test_pub_4_;
+    ros::Publisher test_pub_5_;
 
     ros::NodeHandle nh_;
 		tf::TransformListener tf_;
@@ -175,6 +178,10 @@ class ThreeDOGMappingNode
     double srt_;
     double str_;
     double stt_;
+    double alpha1_;
+    double alpha2_;
+    double alpha3_;
+    double alpha4_;
     double linerThreshold_, angularThreshold_;
     double linerDistance_,  angularDistance_;
     double obsSigmaGain_;
@@ -240,7 +247,7 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("transform_publish_period", transform_publish_period_, 0.05);
 
   private_nh_.param("minimum_score", minimum_score_, 0.0);
-  private_nh_.param("sigma", sigma_, 0.05);
+  private_nh_.param("sigma", sigma_, 0.08);
   private_nh_.param("kernelSize", kernelSize_, 1);
   private_nh_.param("lstep", lstep_, 0.05);
   private_nh_.param("astep", astep_, 0.05);
@@ -250,11 +257,15 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("srt", srt_, 0.05);
   private_nh_.param("str", str_, 0.05);
   private_nh_.param("stt", stt_, 0.1);
+  private_nh_.param("alpha1", alpha1_, 0.1);
+  private_nh_.param("alpha2", alpha2_, 0.1);
+  private_nh_.param("alpha3", alpha3_, 0.8);
+  private_nh_.param("alpha4", alpha4_, 0.1);
 
   private_nh_.param("linerThreshold", linerThreshold_, 0.5);
   private_nh_.param("angularThreshold", angularThreshold_, 0.25);
   private_nh_.param("resampleThreshold", resampleThreshold_, 0.5);
-  private_nh_.param("particle_size", particle_size_, 200);
+  private_nh_.param("particle_size", particle_size_, 100);
   private_nh_.param("xmin", xmin_, -10.0);
   private_nh_.param("ymin", ymin_, -10.0);
   private_nh_.param("zmin", zmin_, -1.0);
@@ -278,6 +289,7 @@ void ThreeDOGMappingNode::startLiveSlam()
   test_pub_2_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 0, true);
   test_pub_3_ = nh_.advertise<sensor_msgs::PointCloud>("pointcloud", 0, true);
   test_pub_4_ = nh_.advertise<geometry_msgs::PoseStamped>("bestpose", 0, true);
+  test_pub_5_ = nh_.advertise<std_msgs::Float32>("weight", 0, true);
 }
 
 void ThreeDOGMappingNode::startReplay(const std::string & bag_fname, std::string point_cloud_topic)
@@ -423,6 +435,10 @@ ThreeDOGMappingNode::initMapper(const ros::Time& t)
   motionmodel_.srt = srt_;
   motionmodel_.str = str_;
   motionmodel_.stt = stt_;
+  motionmodel_.alpha1 = alpha1_;
+  motionmodel_.alpha2 = alpha2_;
+  motionmodel_.alpha3 = alpha3_;
+  motionmodel_.alpha4 = alpha4_;
 
   ThreeDOGMapping::sampleGaussian(1,seed_);
 
@@ -703,6 +719,9 @@ inline void ThreeDOGMappingNode::normalize(){
   neff_=0;
   for (ParticleVector::iterator it=particles_.begin(); it!=particles_.end(); it++){
     weights_.push_back(exp(gain*(it->weight_-lmax)));
+    std_msgs::Float32 f32_msg;
+    f32_msg.data = exp(it->weight_);
+    test_pub_5_.publish(f32_msg);
     wcum+=weights_.back();
   }
 
