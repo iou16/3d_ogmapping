@@ -19,7 +19,7 @@ namespace ThreeDOGMapping {
 		double srr, str, srt, stt;
 		double delta_x, delta_y, /*delta_z, delta_roll, delta_pitch,*/ delta_yaw;
     double dxy;
-    double alpha1 = 0.1, alpha2 = 0.1, alpha3 = 0.8, alpha4 = 0.1;
+    double alpha1/* = 0.1*/, alpha2/* = 0.1*/, alpha3/* = 0.8*/, alpha4/* = 0.1*/;
 	};
 };
 
