@@ -287,7 +287,6 @@ void ThreeDOGMappingNode::startLiveSlam()
   test_pub_2_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 0, true);
   test_pub_3_ = nh_.advertise<sensor_msgs::PointCloud>("pointcloud", 0, true);
   test_pub_4_ = nh_.advertise<geometry_msgs::PoseStamped>("bestpose", 0, true);
-  test_pub_5_ = nh_.advertise<std_msgs::Float32>("weight", 0, true);
 }
 
 void ThreeDOGMappingNode::startReplay(const std::string & bag_fname, std::string point_cloud_topic)
