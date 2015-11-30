@@ -63,7 +63,7 @@ void ScanMatcher::computeActiveArea(ScanMatcherMap& map, const tf::Pose& p, cons
    pcl_ros::transformPointCloud(point_cloud, rotation_point_cloud, lp);
 
 	 for (int i=0; i < point_cloud.size(); i++){
-     double r = std::sqrt(std::pow(std::sqrt(std::pow(rotation_point_cloud.points.at(i).x,2)+std::pow(rotation_point_cloud.points.at(i).y,2)),2)+std::pow(rotation_point_cloud.points.at(i).z,2));
+     double r = std::sqrt(std::pow(std::sqrt(std::pow(point_cloud.points.at(i).x,2)+std::pow(point_cloud.points.at(i).y,2)),2)+std::pow(point_cloud.points.at(i).z,2));
 	 	 if (r>19.0) continue;
 	 	 if (rotation_point_cloud.points.at(i).x<min.x) min.x=rotation_point_cloud.points.at(i).x;
 	 	 if (rotation_point_cloud.points.at(i).y<min.y) min.y=rotation_point_cloud.points.at(i).y;
@@ -112,8 +112,8 @@ void ScanMatcher::computeActiveArea(ScanMatcherMap& map, const tf::Pose& p, cons
 			// 	activeArea.insert(cp);
 			// }
 		} else {
-      double r = std::sqrt(std::pow(std::sqrt(std::pow(rotation_point_cloud.points.at(i).x,2)+std::pow(rotation_point_cloud.points.at(i).y,2)),2)+std::pow(rotation_point_cloud.points.at(i).z,2));
-		  if (r>19) continue;
+      double r = std::sqrt(std::pow(std::sqrt(std::pow(point_cloud.points.at(i).x,2)+std::pow(point_cloud.points.at(i).y,2)),2)+std::pow(point_cloud.points.at(i).z,2));
+		  if (r>19.0) continue;
 			IntPoint p1=map.world2map(rotation_point_cloud.points.at(i).x,rotation_point_cloud.points.at(i).y,rotation_point_cloud.points.at(i).z);
 			assert(p1.x>=0 && p1.y>=0 && p1.z >=0);
 			IntPoint cp=map.storage().patchIndexes(p1);
@@ -168,8 +168,8 @@ double ScanMatcher::registerScan(ScanMatcherMap& map, const tf::Pose& p, const p
 			// 	esum+=e;
 			// }
 		} else {
-      double r = std::sqrt(std::pow(std::sqrt(std::pow(rotation_point_cloud.points.at(i).x,2)+std::pow(rotation_point_cloud.points.at(i).y,2)),2)+std::pow(rotation_point_cloud.points.at(i).z,2));
-			if (r>19) continue;
+      double r = std::sqrt(std::pow(std::sqrt(std::pow(point_cloud.points.at(i).x,2)+std::pow(point_cloud.points.at(i).y,2)),2)+std::pow(point_cloud.points.at(i).z,2));
+			if (r>19.0) continue;
 			IntPoint p1=map.world2map(rotation_point_cloud.points.at(i).x,rotation_point_cloud.points.at(i).y,rotation_point_cloud.points.at(i).z);
 			assert(p1.x>=0 && p1.y>=0 && p1.z >=0);
 			map.cell(p1).update(true,Point(rotation_point_cloud.points.at(i).x,rotation_point_cloud.points.at(i).y,rotation_point_cloud.points.at(i).z));
