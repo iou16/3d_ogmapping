@@ -49,7 +49,6 @@
 
 #include <boost/program_options.hpp>
 
-#include <std_msgs/Float32.h>
 
 class ThreeDOGMappingNode
 {
@@ -130,7 +129,6 @@ class ThreeDOGMappingNode
     ros::Publisher test_pub_2_;
     ros::Publisher test_pub_3_;
     ros::Publisher test_pub_4_;
-    ros::Publisher test_pub_5_;
 
     ros::NodeHandle nh_;
 		tf::TransformListener tf_;
@@ -719,9 +717,6 @@ inline void ThreeDOGMappingNode::normalize(){
   neff_=0;
   for (ParticleVector::iterator it=particles_.begin(); it!=particles_.end(); it++){
     weights_.push_back(exp(gain*(it->weight_-lmax)));
-    std_msgs::Float32 f32_msg;
-    f32_msg.data = exp(it->weight_);
-    test_pub_5_.publish(f32_msg);
     wcum+=weights_.back();
   }
 
