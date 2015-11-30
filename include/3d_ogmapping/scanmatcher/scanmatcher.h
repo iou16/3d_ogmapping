@@ -37,7 +37,7 @@ class ScanMatcher{
 		void computeActiveArea(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud);
 		double registerScan(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud);
 
-		inline double score(const ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const;
+		inline double score(const ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud) const;
     inline unsigned int likelihoodAndScore(double& s, double& l, const ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud) const;
 		
 		static const double nullLikelihood;
@@ -61,31 +61,48 @@ class ScanMatcher{
     ros::Publisher test_pub;
 };
 
-inline double ScanMatcher::score(const ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const{
+inline double ScanMatcher::score(const ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud) const{
 	double s=0;
 	double freeDelta=map.getDelta()*m_freeCellRatio;
   pcl::PointCloud<pcl::PointXYZ> point_cloud_ = point_cloud;
+
+  // sensor_msgs::PointCloud pc_msg;
+  // pc_msg.points.clear();
+  // pc_msg.points.resize(point_cloud_.size());
+  // pc_msg.header.stamp = ros::Time::now();    
+  // pc_msg.header.frame_id = "hokuyo3d_link";
+
 	for (int i=0; i < point_cloud_.size(); i++){
     double r = std::sqrt(std::pow(std::sqrt(std::pow(point_cloud.points.at(i).x,2)+std::pow(point_cloud.points.at(i).y,2)),2)+std::pow(point_cloud.points.at(i).z,2));
     double si, co;
+    si = sin(atan2(point_cloud.points.at(i).z, std::sqrt(std::pow(point_cloud.points.at(i).x,2)+std::pow(point_cloud.points.at(i).y,2))));
+    co = cos(atan2(point_cloud.points.at(i).z, std::sqrt(std::pow(point_cloud.points.at(i).x,2)+std::pow(point_cloud.points.at(i).y,2))));
+		point_cloud_.points.at(i).x = ((r-freeDelta)*co) * cos(atan2(point_cloud.points.at(i).y,point_cloud.points.at(i).x));
+		point_cloud_.points.at(i).y = ((r-freeDelta)*co) * sin(atan2(point_cloud.points.at(i).y,point_cloud.points.at(i).x));
+    point_cloud_.points.at(i).z = (r-freeDelta)*si; 
+    // pc_msg.points.at(i).x = point_cloud_.points.at(i).x;
+    // pc_msg.points.at(i).y = point_cloud_.points.at(i).y;
+    // pc_msg.points.at(i).z = point_cloud_.points.at(i).z;
   }
+  // test_pub.publish(pc_msg);
 
   tf::Pose lp;
-  lp.setOrigin(p.getOrigin()+(base_to_global * m_3DLIDARPose.getOrigin()));
+  tf::Transform base_to_global_ = tf::Transform(p.getRotation());
+  lp.setOrigin(p.getOrigin()+(base_to_global_ * m_3DLIDARPose.getOrigin()));
   lp.setRotation(p.getRotation() * m_3DLIDARPose.getRotation());
 
   pcl::PointCloud<pcl::PointXYZ> phit_cloud;
   pcl::PointCloud<pcl::PointXYZ> pfree_cloud;
   pcl_ros::transformPointCloud(point_cloud, phit_cloud, lp);
-  pcl_ros::transformPointCloud(point_cloud_, pfree_cloud,lp);
+  pcl_ros::transformPointCloud(point_cloud_, pfree_cloud, lp);
 
-  // sensor_msgs::PointCloud pc_msg;
-  // pc_msg.points.resize(point_cloud.size());
-  // pc_msg.header.stamp = ros::Time::now();    
-  // pc_msg.header.frame_id = "map";
-  
+  sensor_msgs::PointCloud pc_msg;
+  pc_msg.points.resize(point_cloud.size());
+  pc_msg.header.stamp = ros::Time::now();    
+  pc_msg.header.frame_id = "map";
+
   for (int i=0; i < point_cloud.size(); i++){
-    double r = std::sqrt(std::pow(std::sqrt(std::pow(phit_cloud.points.at(i).x,2)+std::pow(phit_cloud.points.at(i).y,2)),2)+std::pow(phit_cloud.points.at(i).z,2));
+    double r = std::sqrt(std::pow(std::sqrt(std::pow(point_cloud.points.at(i).x,2)+std::pow(point_cloud.points.at(i).y,2)),2)+std::pow(point_cloud.points.at(i).z,2));
 	 	if (r>19.0) continue;
     Point phit(phit_cloud.points.at(i).x,phit_cloud.points.at(i).y,phit_cloud.points.at(i).z);
     Point pfree(pfree_cloud.points.at(i).x,pfree_cloud.points.at(i).y,pfree_cloud.points.at(i).z);
@@ -111,14 +128,14 @@ inline double ScanMatcher::score(const ScanMatcherMap& map, const tf::Pose& p, c
 				}
 		}
 		if (found)
-			s+=exp(-1./m_gaussianSigma*bestMu*bestMu);
+      s += exp(-(bestMu * bestMu) / m_gaussianSigma);
     
-    // pc_msg.points.at(i).x = pfree_cloud.points.at(i).x;
-    // pc_msg.points.at(i).y = pfree_cloud.points.at(i).y;
-    // pc_msg.points.at(i).z = pfree_cloud.points.at(i).z;
+    pc_msg.points.at(i).x = pfree_cloud.points.at(i).x;
+    pc_msg.points.at(i).y = pfree_cloud.points.at(i).y;
+    pc_msg.points.at(i).z = pfree_cloud.points.at(i).z;
 	}
 
-  // test_pub.publish(pc_msg);
+  test_pub.publish(pc_msg);
 	return s;
 }
 
@@ -167,7 +184,7 @@ inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, const 
   pc_msg.header.frame_id = "map";
   
   for (int i=0; i < point_cloud.size(); i++){
-    double r = std::sqrt(std::pow(std::sqrt(std::pow(phit_cloud.points.at(i).x,2)+std::pow(phit_cloud.points.at(i).y,2)),2)+std::pow(phit_cloud.points.at(i).z,2));
+    double r = std::sqrt(std::pow(std::sqrt(std::pow(point_cloud.points.at(i).x,2)+std::pow(point_cloud.points.at(i).y,2)),2)+std::pow(point_cloud.points.at(i).z,2));
 	 	if (r>19.0) continue;
     Point phit(phit_cloud.points.at(i).x,phit_cloud.points.at(i).y,phit_cloud.points.at(i).z);
     Point pfree(pfree_cloud.points.at(i).x,pfree_cloud.points.at(i).y,pfree_cloud.points.at(i).z);
@@ -193,7 +210,8 @@ inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, const 
 				}
 		}
 		if (found){
-			s+=exp(-1./m_gaussianSigma*bestMu*bestMu);
+			// s+=exp(-1./m_gaussianSigma*bestMu*bestMu);
+      s += exp(-(bestMu * bestMu) / m_gaussianSigma);
 			c++;
 		}
 		double f=(-1./m_likelihoodSigma)*(bestMu*bestMu);
@@ -203,6 +221,7 @@ inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, const 
     pc_msg.points.at(i).y = pfree_cloud.points.at(i).y;
     pc_msg.points.at(i).z = pfree_cloud.points.at(i).z;
 	}
+  std::cout << l << std::endl;
 
   test_pub.publish(pc_msg);
 	return c;

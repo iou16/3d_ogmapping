@@ -182,7 +182,7 @@ double ScanMatcher::registerScan(ScanMatcherMap& map, const tf::Pose& p, const p
 double ScanMatcher::optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf::Pose& init, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const{
 	double bestScore=-1;
 	tf::Pose currentPose=init;
-	double currentScore=score(map, currentPose, point_cloud, base_to_global);
+	double currentScore=score(map, currentPose, point_cloud);
 	double adelta=m_optAngularDelta, ldelta=m_optLinearDelta;
 	unsigned int refinement=0;
 	enum Move{Front, Back, Left, Right, TurnLeft, TurnRight, Done};
@@ -232,7 +232,7 @@ double ScanMatcher::optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf:
 			}
 			
 			double odo_gain=1;
-			double localScore=odo_gain*score(map, tf::Pose(tf::createQuaternionFromRPY(0,0,localPose.yaw),tf::Vector3(localPose.x,localPose.y,0)), point_cloud, base_to_global);
+			double localScore=odo_gain*score(map, tf::Pose(tf::createQuaternionFromRPY(0,0,localPose.yaw),tf::Vector3(localPose.x,localPose.y,0)), point_cloud);
 			if (localScore>currentScore){
 				currentScore=localScore;
 				bestLocalPose=tf::Pose(tf::createQuaternionFromRPY(0,0,localPose.yaw),tf::Vector3(localPose.x,localPose.y,0));
