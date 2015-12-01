@@ -221,7 +221,6 @@ inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, const 
     pc_msg.points.at(i).y = pfree_cloud.points.at(i).y;
     pc_msg.points.at(i).z = pfree_cloud.points.at(i).z;
 	}
-  std::cout << l << std::endl;
 
   test_pub.publish(pc_msg);
 	return c;
