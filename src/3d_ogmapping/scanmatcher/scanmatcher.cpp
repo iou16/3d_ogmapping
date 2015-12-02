@@ -17,6 +17,7 @@ ScanMatcher::ScanMatcher(): m_3DLIDARPose(tf::Transform(tf::createQuaternionFrom
 
   ros::NodeHandle nh;
   test_pub = nh.advertise<sensor_msgs::PointCloud>("pfreecloud", 2, true);
+  test_pub_2 = nh.advertise<geometry_msgs::PoseStamped>("currentPose", 0, true);
 }
 
 void ScanMatcher::set3DLIDARPose(const tf::Pose& lpose){
@@ -179,7 +180,7 @@ double ScanMatcher::registerScan(ScanMatcherMap& map, const tf::Pose& p, const p
 	return esum;
 }
 
-double ScanMatcher::optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf::Pose& init, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const{
+double ScanMatcher::optimize(tf::Pose& pnew, const ScanMatcherMap& map, const tf::Pose& init, const pcl::PointCloud<pcl::PointXYZ>& point_cloud) const{
 	double bestScore=-1;
 	tf::Pose currentPose=init;
 	double currentScore=score(map, currentPose, point_cloud);
@@ -202,6 +203,8 @@ double ScanMatcher::optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf:
 
 		Move move=Front;
 		do {
+      current_yaw = tf::getYaw(currentPose.getRotation());
+      current_yaw = atan2(sin(current_yaw), cos(current_yaw));
 			localPose=Pose(currentPose.getOrigin().x(),currentPose.getOrigin().y(),0,0,0,current_yaw);
 			switch(move){
 				case Front:
@@ -232,15 +235,25 @@ double ScanMatcher::optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf:
 			}
 			
 			double odo_gain=1;
-			double localScore=odo_gain*score(map, tf::Pose(tf::createQuaternionFromRPY(0,0,localPose.yaw),tf::Vector3(localPose.x,localPose.y,0)), point_cloud);
+			double localScore=odo_gain*score(map, tf::Pose(tf::createQuaternionFromYaw(localPose.yaw),tf::Vector3(localPose.x,localPose.y,0)), point_cloud);
 			if (localScore>currentScore){
 				currentScore=localScore;
-				bestLocalPose=tf::Pose(tf::createQuaternionFromRPY(0,0,localPose.yaw),tf::Vector3(localPose.x,localPose.y,0));
+				bestLocalPose=tf::Pose(tf::createQuaternionFromYaw(localPose.yaw),tf::Vector3(localPose.x,localPose.y,0));
 			}
 		} while(move!=Done);
 		currentPose=bestLocalPose;
+    geometry_msgs::PoseStamped ps_msg;
+    ps_msg.header.stamp = ros::Time::now();
+    ps_msg.header.frame_id = "map";
+    tf::poseTFToMsg(currentPose, ps_msg.pose);
+    test_pub_2.publish(ps_msg);
 	}while (currentScore>bestScore || refinement<m_optRecursiveIterations);
 	pnew=currentPose;
+  geometry_msgs::PoseStamped ps_msg;
+  ps_msg.header.stamp = ros::Time::now();
+  ps_msg.header.frame_id = "map";
+  tf::poseTFToMsg(pnew, ps_msg.pose);
+  test_pub_2.publish(ps_msg);
 	return bestScore;
 }
 

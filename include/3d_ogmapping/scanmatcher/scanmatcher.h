@@ -32,7 +32,7 @@ class ScanMatcher{
     void setgenerateMap(bool generateMap);
 		void setMatchingParameters
 			(int kernsize, double lopt, double aopt, int iterations, double sigma, double likelihoodSigma=1);
-    double optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf::Pose& init, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const;
+    double optimize(tf::Pose& pnew, const ScanMatcherMap& map, const tf::Pose& init, const pcl::PointCloud<pcl::PointXYZ>& point_cloud) const;
 		void invalidateActiveArea();
 		void computeActiveArea(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud);
 		double registerScan(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud);
@@ -59,6 +59,7 @@ class ScanMatcher{
     double m_freeCellRatio;
 
     ros::Publisher test_pub;
+    ros::Publisher test_pub_2;
 };
 
 inline double ScanMatcher::score(const ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud) const{

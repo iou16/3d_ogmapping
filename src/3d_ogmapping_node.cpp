@@ -263,7 +263,7 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("linerThreshold", linerThreshold_, 0.5);
   private_nh_.param("angularThreshold", angularThreshold_, 0.25);
   private_nh_.param("resampleThreshold", resampleThreshold_, 0.5);
-  private_nh_.param("particle_size", particle_size_, 100);
+  private_nh_.param("particle_size", particle_size_, 30);
   private_nh_.param("xmin", xmin_, -10.0);
   private_nh_.param("ymin", ymin_, -10.0);
   private_nh_.param("zmin", zmin_, -1.0);
@@ -603,11 +603,25 @@ inline void ThreeDOGMappingNode::scanMatch(const pcl::PointCloud<pcl::PointXYZ>&
   for (ParticleVector::iterator it=particles_.begin(); it!=particles_.end(); it++){
     tf::Pose corrected;
     double score, l, s;
-    // ROS_INFO("optimize");
-    // score=scanmatcher_.optimize(corrected, it->map, it->pose_, point_cloud, base_to_global);
+    ROS_INFO("optimize");
+    score=scanmatcher_.optimize(corrected, it->map, it->pose_, point_cloud);
+
+    geometry_msgs::PoseStamped ps_msg;
+    ps_msg.header.stamp = ros::Time::now();
+    ps_msg.header.frame_id = global_frame_id_;
+    tf::poseTFToMsg(corrected, ps_msg.pose);
+    test_pub_4_.publish(ps_msg);
+
     // if (score>minimum_score_){
-    //   it->pose_=corrected;
+      it->pose_=corrected;
+      it->pose_.setRotation(it->pose_.getRotation().normalize());
     // }
+    
+    ps_msg.header.stamp = ros::Time::now();
+    ps_msg.header.frame_id = global_frame_id_;
+    tf::poseTFToMsg(it->pose_, ps_msg.pose);
+    test_pub_4_.publish(ps_msg);
+
     ROS_INFO("likelihoodAndScore");
     scanmatcher_.likelihoodAndScore(s, l, it->map, it->pose_, point_cloud);
     it->weight_+=l;
