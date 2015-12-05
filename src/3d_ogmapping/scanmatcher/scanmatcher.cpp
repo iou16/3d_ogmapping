@@ -15,8 +15,9 @@ ScanMatcher::ScanMatcher(): m_3DLIDARPose(tf::Transform(tf::createQuaternionFrom
 	m_linearOdometryReliability=0.;
 	m_freeCellRatio=sqrt(3.);
 
-  // ros::NodeHandle nh;
-  // test_pub = nh.advertise<sensor_msgs::PointCloud>("pfreecloud", 2, true);
+  ros::NodeHandle nh;
+  test_pub = nh.advertise<sensor_msgs::PointCloud>("pfreecloud", 2, true);
+  test_pub_2 = nh.advertise<geometry_msgs::PoseStamped>("currentPose", 0, true);
 }
 
 void ScanMatcher::set3DLIDARPose(const tf::Pose& lpose){
@@ -41,11 +42,12 @@ void ScanMatcher::invalidateActiveArea(){
 	m_activeAreaComputed=false;
 }
 
-void ScanMatcher::computeActiveArea(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global){
+void ScanMatcher::computeActiveArea(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud){
 	if (m_activeAreaComputed)
 		return;
   tf::Pose lp;
-  lp.setOrigin(p.getOrigin()+(base_to_global * m_3DLIDARPose.getOrigin()));
+  tf::Transform base_to_global_ = tf::Transform(p.getRotation());
+  lp.setOrigin(p.getOrigin()+(base_to_global_ * m_3DLIDARPose.getOrigin()));
   lp.setRotation(p.getRotation() * m_3DLIDARPose.getRotation());
 	IntPoint p0=map.world2map(Point(lp.getOrigin().x(),lp.getOrigin().y(),lp.getOrigin().z()));
   Point min(map.map2world(0,0,0));
@@ -62,8 +64,8 @@ void ScanMatcher::computeActiveArea(ScanMatcherMap& map, const tf::Pose& p, cons
    pcl_ros::transformPointCloud(point_cloud, rotation_point_cloud, lp);
 
 	 for (int i=0; i < point_cloud.size(); i++){
-     double r = std::sqrt(std::pow(std::sqrt(std::pow(rotation_point_cloud.points.at(i).x,2)+std::pow(rotation_point_cloud.points.at(i).y,2)),2)+std::pow(rotation_point_cloud.points.at(i).z,2));
-	 	 if (r>15.0) continue;
+     double r = std::sqrt(std::pow(std::sqrt(std::pow(point_cloud.points.at(i).x,2)+std::pow(point_cloud.points.at(i).y,2)),2)+std::pow(point_cloud.points.at(i).z,2));
+	 	 if (r>19.0) continue;
 	 	 if (rotation_point_cloud.points.at(i).x<min.x) min.x=rotation_point_cloud.points.at(i).x;
 	 	 if (rotation_point_cloud.points.at(i).y<min.y) min.y=rotation_point_cloud.points.at(i).y;
      if (rotation_point_cloud.points.at(i).z<min.z) min.z=rotation_point_cloud.points.at(i).z;
@@ -111,8 +113,8 @@ void ScanMatcher::computeActiveArea(ScanMatcherMap& map, const tf::Pose& p, cons
 			// 	activeArea.insert(cp);
 			// }
 		} else {
-      double r = std::sqrt(std::pow(std::sqrt(std::pow(rotation_point_cloud.points.at(i).x,2)+std::pow(rotation_point_cloud.points.at(i).y,2)),2)+std::pow(rotation_point_cloud.points.at(i).z,2));
-		  if (r>15) continue;
+      double r = std::sqrt(std::pow(std::sqrt(std::pow(point_cloud.points.at(i).x,2)+std::pow(point_cloud.points.at(i).y,2)),2)+std::pow(point_cloud.points.at(i).z,2));
+		  if (r>19.0) continue;
 			IntPoint p1=map.world2map(rotation_point_cloud.points.at(i).x,rotation_point_cloud.points.at(i).y,rotation_point_cloud.points.at(i).z);
 			assert(p1.x>=0 && p1.y>=0 && p1.z >=0);
 			IntPoint cp=map.storage().patchIndexes(p1);
@@ -124,14 +126,15 @@ void ScanMatcher::computeActiveArea(ScanMatcherMap& map, const tf::Pose& p, cons
 	m_activeAreaComputed=true;
 }
 
-double ScanMatcher::registerScan(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global){
+double ScanMatcher::registerScan(ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud){
 	if (!m_activeAreaComputed)
-		computeActiveArea(map, p, point_cloud, base_to_global);
+		computeActiveArea(map, p, point_cloud);
 		
 	map.storage().allocActiveArea();
 	
   tf::Pose lp;
-  lp.setOrigin(p.getOrigin()+(base_to_global * m_3DLIDARPose.getOrigin()));
+  tf::Transform base_to_global_ = tf::Transform(p.getRotation());
+  lp.setOrigin(p.getOrigin()+(base_to_global_ * m_3DLIDARPose.getOrigin()));
   lp.setRotation(p.getRotation() * m_3DLIDARPose.getRotation());
 	IntPoint p0=map.world2map(Point(lp.getOrigin().x(),lp.getOrigin().y(),lp.getOrigin().z()));
 
@@ -166,8 +169,8 @@ double ScanMatcher::registerScan(ScanMatcherMap& map, const tf::Pose& p, const p
 			// 	esum+=e;
 			// }
 		} else {
-      double r = std::sqrt(std::pow(std::sqrt(std::pow(rotation_point_cloud.points.at(i).x,2)+std::pow(rotation_point_cloud.points.at(i).y,2)),2)+std::pow(rotation_point_cloud.points.at(i).z,2));
-			if (r>15) continue;
+      double r = std::sqrt(std::pow(std::sqrt(std::pow(point_cloud.points.at(i).x,2)+std::pow(point_cloud.points.at(i).y,2)),2)+std::pow(point_cloud.points.at(i).z,2));
+			if (r>19.0) continue;
 			IntPoint p1=map.world2map(rotation_point_cloud.points.at(i).x,rotation_point_cloud.points.at(i).y,rotation_point_cloud.points.at(i).z);
 			assert(p1.x>=0 && p1.y>=0 && p1.z >=0);
 			map.cell(p1).update(true,Point(rotation_point_cloud.points.at(i).x,rotation_point_cloud.points.at(i).y,rotation_point_cloud.points.at(i).z));
@@ -177,13 +180,13 @@ double ScanMatcher::registerScan(ScanMatcherMap& map, const tf::Pose& p, const p
 	return esum;
 }
 
-double ScanMatcher::optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf::Pose& init, const pcl::PointCloud<pcl::PointXYZ>& point_cloud, const tf::Transform& base_to_global) const{
+double ScanMatcher::optimize(tf::Pose& pnew, const ScanMatcherMap& map, const tf::Pose& init, const pcl::PointCloud<pcl::PointXYZ>& point_cloud) const{
 	double bestScore=-1;
 	tf::Pose currentPose=init;
-	double currentScore=score(map, currentPose, point_cloud, base_to_global);
+	double currentScore=score(map, currentPose, point_cloud);
 	double adelta=m_optAngularDelta, ldelta=m_optLinearDelta;
 	unsigned int refinement=0;
-	enum Move{Front, Back, Left, Right, Up, Down,  RollPlus, RollMinus, PitchPlus, PitchMinus, YawPlus, YawMinus, Done};
+	enum Move{Front, Back, Left, Right, TurnLeft, TurnRight, Done};
 	do{
 		if (bestScore>=currentScore){
 			refinement++;
@@ -193,20 +196,16 @@ double ScanMatcher::optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf:
 		bestScore=currentScore;
 		tf::Pose bestLocalPose=currentPose;
 
-    double current_roll, current_pitch, current_yaw;
-    tf::Matrix3x3 current_mat = currentPose.getBasis();
-    current_mat.getRPY(current_roll, current_pitch, current_yaw);
-    current_roll = atan2(sin(current_roll), cos(current_roll));
-    current_pitch = atan2(sin(current_pitch), cos(current_pitch));
+    double current_yaw = tf::getYaw(currentPose.getRotation());
     current_yaw = atan2(sin(current_yaw), cos(current_yaw));
 
-    Pose localPose(currentPose.getOrigin().x(),currentPose.getOrigin().y(),currentPose.getOrigin().z(),
-                    current_roll, current_pitch, current_yaw);
+    Pose localPose(currentPose.getOrigin().x(),currentPose.getOrigin().y(),0,0,0,current_yaw);
 
 		Move move=Front;
 		do {
-			localPose=Pose(currentPose.getOrigin().x(),currentPose.getOrigin().y(),currentPose.getOrigin().z(),
-                     current_roll, current_pitch, current_yaw);
+      current_yaw = tf::getYaw(currentPose.getRotation());
+      current_yaw = atan2(sin(current_yaw), cos(current_yaw));
+			localPose=Pose(currentPose.getOrigin().x(),currentPose.getOrigin().y(),0,0,0,current_yaw);
 			switch(move){
 				case Front:
 					localPose.x+=ldelta;
@@ -222,37 +221,13 @@ double ScanMatcher::optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf:
 					break;
 				case Right:
 					localPose.y+=ldelta;
-					move=Up;
+					move=TurnLeft;
 					break;
-        case Up:
-          localPose.z+=ldelta;
-          move=Down;
-          break;
-        case Down:
-          localPose.z-=ldelta;
-          move=RollPlus;
-          break;
-        case RollPlus:
-          localPose.roll+=adelta;
-          move=RollMinus;
-          break;
-        case RollMinus:
-          localPose.roll-=adelta;
-          move=PitchPlus;
-          break;
-        case PitchPlus:
-          localPose.pitch+=adelta;
-          move=PitchMinus;
-          break;
-        case PitchMinus:
-          localPose.pitch-=adelta;
-          move=YawPlus;
-          break;
-        case YawPlus:
+        case TurnLeft:
           localPose.yaw+=adelta;
-          move=YawMinus;
+          move=TurnRight;
           break;
-        case YawMinus:
+        case TurnRight:
           localPose.yaw-=adelta;
           move=Done;
           break;
@@ -260,15 +235,25 @@ double ScanMatcher::optimize(tf::Pose pnew, const ScanMatcherMap& map, const tf:
 			}
 			
 			double odo_gain=1;
-			double localScore=odo_gain*score(map, tf::Pose(tf::createQuaternionFromRPY(localPose.roll,localPose.pitch,localPose.yaw),tf::Vector3(localPose.x,localPose.y,localPose.z)), point_cloud, base_to_global);
+			double localScore=odo_gain*score(map, tf::Pose(tf::createQuaternionFromYaw(localPose.yaw),tf::Vector3(localPose.x,localPose.y,0)), point_cloud);
 			if (localScore>currentScore){
 				currentScore=localScore;
-				bestLocalPose=tf::Pose(tf::createQuaternionFromRPY(localPose.roll,localPose.pitch,localPose.yaw),tf::Vector3(localPose.x,localPose.y,localPose.z));
+				bestLocalPose=tf::Pose(tf::createQuaternionFromYaw(localPose.yaw),tf::Vector3(localPose.x,localPose.y,0));
 			}
 		} while(move!=Done);
 		currentPose=bestLocalPose;
+    geometry_msgs::PoseStamped ps_msg;
+    ps_msg.header.stamp = ros::Time::now();
+    ps_msg.header.frame_id = "map";
+    tf::poseTFToMsg(currentPose, ps_msg.pose);
+    test_pub_2.publish(ps_msg);
 	}while (currentScore>bestScore || refinement<m_optRecursiveIterations);
 	pnew=currentPose;
+  geometry_msgs::PoseStamped ps_msg;
+  ps_msg.header.stamp = ros::Time::now();
+  ps_msg.header.frame_id = "map";
+  tf::poseTFToMsg(pnew, ps_msg.pose);
+  test_pub_2.publish(ps_msg);
 	return bestScore;
 }
 

@@ -16,41 +16,79 @@ namespace ThreeDOGMapping {
 
       delta_x = delta_pose.getOrigin().x();
       delta_y = delta_pose.getOrigin().y();
-      delta_z = delta_pose.getOrigin().z();
-      tf::Matrix3x3 delta_mat =  delta_pose.getBasis();
-      delta_mat.getRPY(delta_roll, delta_pitch, delta_yaw);
-      delta_roll = atan2(sin(delta_roll), cos(delta_roll));
-      delta_pitch = atan2(sin(delta_pitch), cos(delta_pitch));
-      delta_yaw = atan2(sin(delta_yaw), cos(delta_yaw));
+      delta_yaw = atan2(sin(tf::getYaw(delta_pose.getRotation())), cos(tf::getYaw(delta_pose.getRotation())));
 
-			double dxy=sqrt(delta_x*delta_x+delta_y*delta_y);
-			dxyz=sqrt(dxy*dxy+delta_z*delta_z);
+			dxy=sqrt(delta_x*delta_x+delta_y*delta_y);
     }
 
-	tf::Pose MotionModel::drawFromMotion(tf::Pose& p, tf::Transform base_to_global) 
+	tf::Pose MotionModel::drawFromMotion(tf::Pose& p) 
 		{
 			double sxy=0.3*srr;
-			delta_x+=sampleGaussian(srr*fabs(delta_x)+str*fabs(delta_y)+sxy*fabs(delta_yaw)+0.01*fabs(delta_z)+0.01*fabs(delta_pitch));
-			delta_y+=sampleGaussian(srr*fabs(delta_y)+str*fabs(delta_x)+sxy*fabs(delta_yaw)+0.01*fabs(delta_z)+0.01*fabs(delta_roll));
-			// delta_z+=sampleGaussian(0.1*fabs(delta_z)+fabs(delta_x)*0.01+fabs(delta_y)*0.01+fabs(delta_roll)*0.01+fabs(delta_pitch)*0.1);
-			// delta_roll+=sampleGaussian(0.2*fabs(delta_roll)+0.01*fabs(delta_pitch)+0.01*fabs(delta_yaw)+0.1*dxyz);
-			// delta_pitch+=sampleGaussian(0.01*fabs(delta_roll)+0.2*fabs(delta_pitch)+0.01*fabs(delta_yaw)+0.1*dxyz);
-			delta_yaw+=sampleGaussian(0.01*fabs(delta_roll)+0.01*fabs(delta_pitch)+stt*fabs(delta_yaw)+srt*dxyz);
-			delta_roll=fmod(delta_roll, 2*M_PI);
-			delta_pitch=fmod(delta_pitch, 2*M_PI);
+			delta_x+=sampleGaussian(srr*fabs(delta_x)+str*fabs(delta_yaw)+sxy*fabs(delta_y));
+			delta_y+=sampleGaussian(srr*fabs(delta_y)+str*fabs(delta_yaw)+sxy*fabs(delta_x));
+			delta_yaw+=sampleGaussian(stt*fabs(delta_yaw)+srt*dxy);
 			delta_yaw=fmod(delta_yaw, 2*M_PI);
-			if (delta_roll>M_PI)
-				delta_roll-=2*M_PI;
-			if (delta_pitch>M_PI)
-				delta_pitch-=2*M_PI;
 			if (delta_yaw>M_PI)
 				delta_yaw-=2*M_PI;
 
-   		tf::Pose noisy_pose(tf::createQuaternionFromRPY(delta_roll,delta_pitch,delta_yaw),tf::Vector3(delta_x,delta_y,delta_z));
-      noisy_pose.setOrigin(base_to_global * noisy_pose.getOrigin());
+   		tf::Pose noisy_pose(tf::createQuaternionFromRPY(0,0,delta_yaw),tf::Vector3(delta_x,delta_y,0));
+      tf::Transform base_to_global_ = tf::Transform(p.getRotation());
+      noisy_pose.setOrigin(base_to_global_ * noisy_pose.getOrigin());
       p.setOrigin(p.getOrigin() + noisy_pose.getOrigin());
       p.setRotation(p.getRotation() * noisy_pose.getRotation());
 
 			return p;
 		}
+
+  double MotionModel::normalize(double z)
+    {
+      return atan2(sin(z),cos(z));
+    }
+
+  double MotionModel::angle_diff(double a, double b)
+    {
+      double d1, d2;
+      a = normalize(a);
+      b = normalize(b);
+      d1 = a-b;
+      d2 = 2*M_PI - fabs(d1);
+      if(d1 > 0)
+        d2 *= -1.0;
+      if(fabs(d1) < fabs(d2))
+        return(d1);
+      else
+        return(d2);
+    }
+
+  tf::Pose MotionModel::updateAction(tf::Pose& p)
+    {
+      double delta_rot1;
+      if (dxy < 0.01)
+        delta_rot1 = 0.0;
+      else
+        delta_rot1 = angle_diff(atan2(delta_y, delta_x), delta_yaw);
+      double delta_trans = dxy;
+      double delta_rot2 = angle_diff(delta_yaw, delta_rot1);
+
+      double delta_rot1_noise = std::min(fabs(angle_diff(delta_rot1,0.0)), fabs(angle_diff(delta_rot1, M_PI)));
+      double delta_rot2_noise = std::min(fabs(angle_diff(delta_rot2,0.0)), fabs(angle_diff(delta_rot2, M_PI)));
+
+      double delta_rot1_hat = angle_diff(delta_rot1, sampleGaussian(alpha1 * delta_rot1_noise*delta_rot1_noise + 
+                                                                    alpha2 * delta_trans*delta_trans));
+      double delta_trans_hat = delta_trans - sampleGaussian(alpha3 * delta_trans*delta_trans +
+                                                            alpha4 * delta_rot1_noise*delta_rot1_noise +
+                                                            alpha4 * delta_rot2_noise*delta_rot2_noise);
+      double delta_rot2_hat = angle_diff(delta_rot2, sampleGaussian(alpha1 * delta_rot2_noise*delta_rot2_noise +
+                                                                    alpha2 * delta_trans*delta_trans));
+
+      delta_x = delta_trans_hat * cos(delta_rot1_hat);
+      delta_y = delta_trans_hat * sin(delta_rot1_hat);
+      delta_yaw = delta_rot1_hat + delta_rot2_hat;
+
+   		tf::Pose noisy_pose(tf::createQuaternionFromRPY(0,0,delta_yaw),tf::Vector3(delta_x,delta_y,0));
+      tf::Transform base_to_global_ = tf::Transform(p.getRotation());
+      noisy_pose.setOrigin(base_to_global_ * noisy_pose.getOrigin());
+      p.setOrigin(p.getOrigin() + noisy_pose.getOrigin());
+      p.setRotation(p.getRotation() * noisy_pose.getRotation());
+    }
 }

@@ -5,14 +5,14 @@
 namespace ThreeDOGMapping {
 	double pf_ran_gaussian(double sigma)
 	{
-		double x1, x2, w;
-		double r;
+		double x1, x2, w, r;
+
 		do
 		{
-			do { r = drand48(); } while (r == 0.0);
+			do { r = drand48(); } while (r==0.0);
 			x1 = 2.0 * r - 1.0;
-			do { r = drand48(); } while (r == 0.0);
-			x2 = 2.0 * drand48() - 1.0;
+			do { r = drand48(); } while (r==0.0);
+			x2 = 2.0 * r - 1.0;
 			w = x1*x1 + x2*x2;
 		} while(w > 1.0 || w==0.0);
 			
