@@ -47,8 +47,13 @@ add_executable(3d_ogmapping
   src/3d_ogmapping/scanmatcher/smmap.cpp
   src/3d_ogmapping/scanmatcher/scanmatcher.cpp
 )
+add_executable(removeoutliersmap src/remove_outliers.cpp)
 
 target_link_libraries(3d_ogmapping
   ${catkin_LIBRARIES}
-  )
+)
+
+target_link_libraries(removeoutliersmap
+  ${catkin_LIBRARIES}
+)
 
