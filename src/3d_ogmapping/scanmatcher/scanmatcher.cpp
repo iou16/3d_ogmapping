@@ -242,18 +242,18 @@ double ScanMatcher::optimize(tf::Pose& pnew, const ScanMatcherMap& map, const tf
 			}
 		} while(move!=Done);
 		currentPose=bestLocalPose;
-    geometry_msgs::PoseStamped ps_msg;
-    ps_msg.header.stamp = ros::Time::now();
-    ps_msg.header.frame_id = "map";
-    tf::poseTFToMsg(currentPose, ps_msg.pose);
-    test_pub_2.publish(ps_msg);
+    // geometry_msgs::PoseStamped ps_msg;
+    // ps_msg.header.stamp = ros::Time::now();
+    // ps_msg.header.frame_id = "map";
+    // tf::poseTFToMsg(currentPose, ps_msg.pose);
+    // test_pub_2.publish(ps_msg);
 	}while (currentScore>bestScore || refinement<m_optRecursiveIterations);
 	pnew=currentPose;
-  geometry_msgs::PoseStamped ps_msg;
-  ps_msg.header.stamp = ros::Time::now();
-  ps_msg.header.frame_id = "map";
-  tf::poseTFToMsg(pnew, ps_msg.pose);
-  test_pub_2.publish(ps_msg);
+  // geometry_msgs::PoseStamped ps_msg;
+  // ps_msg.header.stamp = ros::Time::now();
+  // ps_msg.header.frame_id = "map";
+  // tf::poseTFToMsg(pnew, ps_msg.pose);
+  // test_pub_2.publish(ps_msg);
 	return bestScore;
 }
 

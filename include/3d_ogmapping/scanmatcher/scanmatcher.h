@@ -97,10 +97,10 @@ inline double ScanMatcher::score(const ScanMatcherMap& map, const tf::Pose& p, c
   pcl_ros::transformPointCloud(point_cloud, phit_cloud, lp);
   pcl_ros::transformPointCloud(point_cloud_, pfree_cloud, lp);
 
-  sensor_msgs::PointCloud pc_msg;
-  pc_msg.points.resize(point_cloud.size());
-  pc_msg.header.stamp = ros::Time::now();    
-  pc_msg.header.frame_id = "map";
+  // sensor_msgs::PointCloud pc_msg;
+  // pc_msg.points.resize(point_cloud.size());
+  // pc_msg.header.stamp = ros::Time::now();    
+  // pc_msg.header.frame_id = "map";
 
   for (int i=0; i < point_cloud.size(); i++){
     double r = std::sqrt(std::pow(std::sqrt(std::pow(point_cloud.points.at(i).x,2)+std::pow(point_cloud.points.at(i).y,2)),2)+std::pow(point_cloud.points.at(i).z,2));
@@ -131,12 +131,12 @@ inline double ScanMatcher::score(const ScanMatcherMap& map, const tf::Pose& p, c
 		if (found)
       s += exp(-(bestMu * bestMu) / m_gaussianSigma);
     
-    pc_msg.points.at(i).x = pfree_cloud.points.at(i).x;
-    pc_msg.points.at(i).y = pfree_cloud.points.at(i).y;
-    pc_msg.points.at(i).z = pfree_cloud.points.at(i).z;
+    // pc_msg.points.at(i).x = pfree_cloud.points.at(i).x;
+    // pc_msg.points.at(i).y = pfree_cloud.points.at(i).y;
+    // pc_msg.points.at(i).z = pfree_cloud.points.at(i).z;
 	}
 
-  test_pub.publish(pc_msg);
+  // test_pub.publish(pc_msg);
 	return s;
 }
 
@@ -179,10 +179,10 @@ inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, const 
   pcl_ros::transformPointCloud(point_cloud, phit_cloud, lp);
   pcl_ros::transformPointCloud(point_cloud_, pfree_cloud, lp);
 
-  sensor_msgs::PointCloud pc_msg;
-  pc_msg.points.resize(point_cloud.size());
-  pc_msg.header.stamp = ros::Time::now();    
-  pc_msg.header.frame_id = "map";
+  // sensor_msgs::PointCloud pc_msg;
+  // pc_msg.points.resize(point_cloud.size());
+  // pc_msg.header.stamp = ros::Time::now();    
+  // pc_msg.header.frame_id = "map";
   
   for (int i=0; i < point_cloud.size(); i++){
     double r = std::sqrt(std::pow(std::sqrt(std::pow(point_cloud.points.at(i).x,2)+std::pow(point_cloud.points.at(i).y,2)),2)+std::pow(point_cloud.points.at(i).z,2));
@@ -218,12 +218,12 @@ inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, const 
 		double f=(-1./m_likelihoodSigma)*(bestMu*bestMu);
 		l+=(found)?f:noHit;
     
-    pc_msg.points.at(i).x = pfree_cloud.points.at(i).x;
-    pc_msg.points.at(i).y = pfree_cloud.points.at(i).y;
-    pc_msg.points.at(i).z = pfree_cloud.points.at(i).z;
+    // pc_msg.points.at(i).x = pfree_cloud.points.at(i).x;
+    // pc_msg.points.at(i).y = pfree_cloud.points.at(i).y;
+    // pc_msg.points.at(i).z = pfree_cloud.points.at(i).z;
 	}
 
-  test_pub.publish(pc_msg);
+  // test_pub.publish(pc_msg);
 	return c;
 }
 
