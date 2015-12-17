@@ -260,8 +260,8 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("alpha3", alpha3_, 0.8);
   private_nh_.param("alpha4", alpha4_, 0.1);
 
-  private_nh_.param("linerThreshold", linerThreshold_, 0.0);
-  private_nh_.param("angularThreshold", angularThreshold_, 0.0);
+  private_nh_.param("linerThreshold", linerThreshold_, 0.05);
+  private_nh_.param("angularThreshold", angularThreshold_, 0.0872665);
   private_nh_.param("resampleThreshold", resampleThreshold_, 0.5);
   private_nh_.param("particle_size", particle_size_, 30);
   private_nh_.param("xmin", xmin_, -10.0);
@@ -363,7 +363,7 @@ void ThreeDOGMappingNode::startReplay(const std::string & bag_fname, std::string
       }
     }
   }
-  pcl::io::savePCDFile("3d_map2.pcd", pc_msg);
+  pcl::io::savePCDFile("3d_map19.pcd", pc_msg);
 
   bag.close();
 }

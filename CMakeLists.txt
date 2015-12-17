@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(threedogmapping)
 
+set(CMAKE_CXX_FLAGS "-march=native -O3")
+
 find_package(catkin REQUIRED COMPONENTS
   message_filters
   roscpp
