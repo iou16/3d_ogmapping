@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(threedogmapping)
 
-set(CMAKE_CXX_FLAGS "-march=native -O3")
+set(CMAKE_CXX_FLAGS "-march=native -O2 -std=c++11 -fopenmp")
+set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS   "-march=native -O2 -fopenmp")
+set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "-march=native -O2 -fopenmp")
+set(CMAKE_EXE_LINKER_FLAGS "-march=native -O2 -fopenmp")
 
 find_package(catkin REQUIRED COMPONENTS
   message_filters

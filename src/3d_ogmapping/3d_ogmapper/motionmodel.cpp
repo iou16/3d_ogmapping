@@ -61,34 +61,34 @@ namespace ThreeDOGMapping {
     }
 
   tf::Pose MotionModel::updateAction(tf::Pose& p)
-    {
-      double delta_rot1;
-      if (dxy < 0.01)
-        delta_rot1 = 0.0;
-      else
-        delta_rot1 = angle_diff(atan2(delta_y, delta_x), delta_yaw);
-      double delta_trans = dxy;
-      double delta_rot2 = angle_diff(delta_yaw, delta_rot1);
+  {
+	  double delta_rot1;
+	  if (dxy < 0.01)
+		  delta_rot1 = 0.0;
+	  else
+		  delta_rot1 = angle_diff(atan2(delta_y, delta_x), delta_yaw);
+	  double delta_trans = dxy;
+	  double delta_rot2 = angle_diff(delta_yaw, delta_rot1);
 
-      double delta_rot1_noise = std::min(fabs(angle_diff(delta_rot1,0.0)), fabs(angle_diff(delta_rot1, M_PI)));
-      double delta_rot2_noise = std::min(fabs(angle_diff(delta_rot2,0.0)), fabs(angle_diff(delta_rot2, M_PI)));
+	  double delta_rot1_noise = std::min(fabs(angle_diff(delta_rot1,0.0)), fabs(angle_diff(delta_rot1, M_PI)));
+	  double delta_rot2_noise = std::min(fabs(angle_diff(delta_rot2,0.0)), fabs(angle_diff(delta_rot2, M_PI)));
 
-      double delta_rot1_hat = angle_diff(delta_rot1, sampleGaussian(alpha1 * delta_rot1_noise*delta_rot1_noise + 
-                                                                    alpha2 * delta_trans*delta_trans));
-      double delta_trans_hat = delta_trans - sampleGaussian(alpha3 * delta_trans*delta_trans +
-                                                            alpha4 * delta_rot1_noise*delta_rot1_noise +
-                                                            alpha4 * delta_rot2_noise*delta_rot2_noise);
-      double delta_rot2_hat = angle_diff(delta_rot2, sampleGaussian(alpha1 * delta_rot2_noise*delta_rot2_noise +
-                                                                    alpha2 * delta_trans*delta_trans));
+	  double delta_rot1_hat = angle_diff(delta_rot1, sampleGaussian(alpha1 * delta_rot1_noise*delta_rot1_noise + 
+				  alpha2 * delta_trans*delta_trans));
+	  double delta_trans_hat = delta_trans - sampleGaussian(alpha3 * delta_trans*delta_trans +
+			  alpha4 * delta_rot1_noise*delta_rot1_noise +
+			  alpha4 * delta_rot2_noise*delta_rot2_noise);
+	  double delta_rot2_hat = angle_diff(delta_rot2, sampleGaussian(alpha1 * delta_rot2_noise*delta_rot2_noise +
+				  alpha2 * delta_trans*delta_trans));
 
-      delta_x = delta_trans_hat * cos(delta_rot1_hat);
-      delta_y = delta_trans_hat * sin(delta_rot1_hat);
-      delta_yaw = delta_rot1_hat + delta_rot2_hat;
+	  delta_x = delta_trans_hat * cos(delta_rot1_hat);
+	  delta_y = delta_trans_hat * sin(delta_rot1_hat);
+	  delta_yaw = delta_rot1_hat + delta_rot2_hat;
 
-   		tf::Pose noisy_pose(tf::createQuaternionFromRPY(0,0,delta_yaw),tf::Vector3(delta_x,delta_y,0));
-      tf::Transform base_to_global_ = tf::Transform(p.getRotation());
-      noisy_pose.setOrigin(base_to_global_ * noisy_pose.getOrigin());
-      p.setOrigin(p.getOrigin() + noisy_pose.getOrigin());
-      p.setRotation(p.getRotation() * noisy_pose.getRotation());
-    }
+	  tf::Pose noisy_pose(tf::createQuaternionFromRPY(0,0,delta_yaw),tf::Vector3(delta_x,delta_y,0));
+	  tf::Transform base_to_global_ = tf::Transform(p.getRotation());
+	  noisy_pose.setOrigin(base_to_global_ * noisy_pose.getOrigin());
+	  p.setOrigin(p.getOrigin() + noisy_pose.getOrigin());
+	  p.setRotation(p.getRotation() * noisy_pose.getRotation());
+  }
 }
