@@ -88,7 +88,7 @@ int main(int argc, char** argv)
     ("help", "Print help messages")
     ("pcd_filename", po::value<std::string>()->required(), "pcd filename")
     ("max_update_rate", po::value<double>()->default_value(10.0), "max update rate")
-    ("frame_id", po::value<std::string>()->default_value("odom"), "target frame_id");
+    ("frame_id", po::value<std::string>()->default_value("map"), "target frame_id");
   po::variables_map vm;
   try {
     po::store(po::parse_command_line(argc, argv, desc), vm);

@@ -255,13 +255,13 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("srt", srt_, 0.05);
   private_nh_.param("str", str_, 0.05);
   private_nh_.param("stt", stt_, 0.1);
-  private_nh_.param("alpha1", alpha1_, 0.1);
-  private_nh_.param("alpha2", alpha2_, 0.1);
+  private_nh_.param("alpha1", alpha1_, 0.2);
+  private_nh_.param("alpha2", alpha2_, 0.2);
   private_nh_.param("alpha3", alpha3_, 0.8);
   private_nh_.param("alpha4", alpha4_, 0.1);
 
-  private_nh_.param("linerThreshold", linerThreshold_, 0.05);
-  private_nh_.param("angularThreshold", angularThreshold_, 0.0872665);
+  private_nh_.param("linerThreshold", linerThreshold_, 1.0);
+  private_nh_.param("angularThreshold", angularThreshold_, 0.5);
   private_nh_.param("resampleThreshold", resampleThreshold_, 0.5);
   private_nh_.param("particle_size", particle_size_, 30);
   private_nh_.param("xmin", xmin_, -10.0);
@@ -363,7 +363,7 @@ void ThreeDOGMappingNode::startReplay(const std::string & bag_fname, std::string
       }
     }
   }
-  pcl::io::savePCDFile("3d_map19.pcd", pc_msg);
+  pcl::io::savePCDFile("3d_map24.pcd", pc_msg);
 
   bag.close();
 }
@@ -612,10 +612,10 @@ inline void ThreeDOGMappingNode::scanMatch(const pcl::PointCloud<pcl::PointXYZ>&
     // tf::poseTFToMsg(corrected, ps_msg.pose);
     // test_pub_4_.publish(ps_msg);
 
-    // if (score>minimum_score_){
+    if (score>minimum_score_){
       it->pose_=corrected;
       it->pose_.setRotation(it->pose_.getRotation().normalize());
-    // }
+    }
     
     // ps_msg.header.stamp = ros::Time::now();
     // ps_msg.header.frame_id = global_frame_id_;
