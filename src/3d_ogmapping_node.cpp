@@ -263,7 +263,7 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("linerThreshold", linerThreshold_, 0.05);
   private_nh_.param("angularThreshold", angularThreshold_, 0.0872665);
   private_nh_.param("resampleThreshold", resampleThreshold_, 0.5);
-  private_nh_.param("particle_size", particle_size_, 30);
+  private_nh_.param("particle_size", particle_size_, 5);
   private_nh_.param("xmin", xmin_, -10.0);
   private_nh_.param("ymin", ymin_, -10.0);
   private_nh_.param("zmin", zmin_, -1.0);
@@ -637,9 +637,10 @@ inline bool ThreeDOGMappingNode::resample(const pcl::PointCloud<pcl::PointXYZ>& 
 
   bool hasResampled = false;
 
-  TNodeVector oldGeneration;
+  TNodeVector oldGeneration(particles_.size());
+#pragma omp parallel for
   for (unsigned int i=0; i<particles_.size(); i++){
-    oldGeneration.push_back(particles_[i].node_);
+		oldGeneration[i] = particles_[i].node_;
   }
 
   if (neff_<resampleThreshold_*particles_.size()){

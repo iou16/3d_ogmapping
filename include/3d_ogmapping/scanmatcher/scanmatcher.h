@@ -73,6 +73,9 @@ inline double ScanMatcher::score(const ScanMatcherMap& map, const tf::Pose& p, c
   // pc_msg.header.stamp = ros::Time::now();    
   // pc_msg.header.frame_id = "hokuyo3d_link";
 
+#pragma omp parallel
+{
+#pragma omp for
 	for (int i=0; i < point_cloud_.size(); i++){
     double r = std::sqrt(std::pow(std::sqrt(std::pow(point_cloud.points.at(i).x,2)+std::pow(point_cloud.points.at(i).y,2)),2)+std::pow(point_cloud.points.at(i).z,2));
     double si, co;
@@ -102,6 +105,7 @@ inline double ScanMatcher::score(const ScanMatcherMap& map, const tf::Pose& p, c
   // pc_msg.header.stamp = ros::Time::now();    
   // pc_msg.header.frame_id = "map";
 
+#pragma omp for reduction(+:s)
   for (int i=0; i < point_cloud.size(); i++){
     double r = std::sqrt(std::pow(std::sqrt(std::pow(point_cloud.points.at(i).x,2)+std::pow(point_cloud.points.at(i).y,2)),2)+std::pow(point_cloud.points.at(i).z,2));
 	 	if (r>19.0) continue;
@@ -135,7 +139,7 @@ inline double ScanMatcher::score(const ScanMatcherMap& map, const tf::Pose& p, c
     // pc_msg.points.at(i).y = pfree_cloud.points.at(i).y;
     // pc_msg.points.at(i).z = pfree_cloud.points.at(i).z;
 	}
-
+}
   // test_pub.publish(pc_msg);
 	return s;
 }
@@ -143,6 +147,7 @@ inline double ScanMatcher::score(const ScanMatcherMap& map, const tf::Pose& p, c
 inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, const ScanMatcherMap& map, const tf::Pose& p, const pcl::PointCloud<pcl::PointXYZ>& point_cloud) const{
 	l=0;
 	s=0;
+	double ss=0, ll=0;
 	double freeDelta=map.getDelta()*m_freeCellRatio;
   pcl::PointCloud<pcl::PointXYZ> point_cloud_ = point_cloud;
 
@@ -152,6 +157,10 @@ inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, const 
   // pc_msg.header.stamp = ros::Time::now();    
   // pc_msg.header.frame_id = "hokuyo3d_link";
 
+	unsigned int c=0;
+#pragma omp parallel
+{
+#pragma omp for
 	for (int i=0; i < point_cloud_.size(); i++){
     double r = std::sqrt(std::pow(std::sqrt(std::pow(point_cloud.points.at(i).x,2)+std::pow(point_cloud.points.at(i).y,2)),2)+std::pow(point_cloud.points.at(i).z,2));
     double si, co;
@@ -172,7 +181,6 @@ inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, const 
   lp.setRotation(p.getRotation() * m_3DLIDARPose.getRotation());
 
 	double noHit=nullLikelihood/(m_likelihoodSigma);
-	unsigned int c=0;
 
   pcl::PointCloud<pcl::PointXYZ> phit_cloud;
   pcl::PointCloud<pcl::PointXYZ> pfree_cloud;
@@ -184,6 +192,7 @@ inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, const 
   // pc_msg.header.stamp = ros::Time::now();    
   // pc_msg.header.frame_id = "map";
   
+#pragma omp for reduction(+:c,ss,ll)
   for (int i=0; i < point_cloud.size(); i++){
     double r = std::sqrt(std::pow(std::sqrt(std::pow(point_cloud.points.at(i).x,2)+std::pow(point_cloud.points.at(i).y,2)),2)+std::pow(point_cloud.points.at(i).z,2));
 	 	if (r>19.0) continue;
@@ -212,17 +221,20 @@ inline unsigned int ScanMatcher::likelihoodAndScore(double& s, double& l, const 
 		}
 		if (found){
 			// s+=exp(-1./m_gaussianSigma*bestMu*bestMu);
-      s += exp(-(bestMu * bestMu) / m_gaussianSigma);
-			c++;
+      ss += exp(-(bestMu * bestMu) / m_gaussianSigma);
+			c += 1;
 		}
 		double f=(-1./m_likelihoodSigma)*(bestMu*bestMu);
-		l+=(found)?f:noHit;
+		ll+=(found)?f:noHit;
     
     // pc_msg.points.at(i).x = pfree_cloud.points.at(i).x;
     // pc_msg.points.at(i).y = pfree_cloud.points.at(i).y;
     // pc_msg.points.at(i).z = pfree_cloud.points.at(i).z;
 	}
+}
 
+	s=ss;
+	l=ll;
   // test_pub.publish(pc_msg);
 	return c;
 }
