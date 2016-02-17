@@ -245,7 +245,7 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("transform_publish_period", transform_publish_period_, 0.05);
 
   private_nh_.param("minimum_score", minimum_score_, 0.0);
-  private_nh_.param("sigma", sigma_, 0.08);
+  private_nh_.param("sigma", sigma_, 0.05);
   private_nh_.param("kernelSize", kernelSize_, 1);
   private_nh_.param("lstep", lstep_, 0.05);
   private_nh_.param("astep", astep_, 0.05);
@@ -260,17 +260,17 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("alpha3", alpha3_, 0.8);
   private_nh_.param("alpha4", alpha4_, 0.1);
 
-  private_nh_.param("linerThreshold", linerThreshold_, 0.05);
-  private_nh_.param("angularThreshold", angularThreshold_, 0.0872665);
+  private_nh_.param("linerThreshold", linerThreshold_, 1.0);
+  private_nh_.param("angularThreshold", angularThreshold_, 0.5);
   private_nh_.param("resampleThreshold", resampleThreshold_, 0.5);
-  private_nh_.param("particle_size", particle_size_, 5);
+  private_nh_.param("particle_size", particle_size_, 30);
   private_nh_.param("xmin", xmin_, -10.0);
   private_nh_.param("ymin", ymin_, -10.0);
   private_nh_.param("zmin", zmin_, -1.0);
   private_nh_.param("xmax", xmax_, 10.0);
   private_nh_.param("ymax", ymax_, 10.0);
   private_nh_.param("zmax", zmax_, 1.0);
-  private_nh_.param("delta", delta_, 0.2);
+  private_nh_.param("delta", delta_, 0.1);
 
   private_nh_.param("tf_delay", tf_delay_, transform_publish_period_);
 
@@ -352,8 +352,8 @@ void ThreeDOGMappingNode::startReplay(const std::string & bag_fname, std::string
     for (int y=0; y < particles_.at(best).map.getMapSizeY(); y++) {
       for (int z=0; z < particles_.at(best).map.getMapSizeZ(); z++){
         ThreeDOGMapping::IntPoint p(x, y, z);
-        double occ=particles_.at(best).map.cell(p);
-        assert(occ <= 1.0);
+        double occ=particles_.at(best).map.cell_(p);
+        // assert(occ <= 1.0);
         if(occ > 0.25) {
           ThreeDOGMapping::Point pc_p = particles_.at(best).map.map2world(x,y,z);
           
@@ -363,7 +363,7 @@ void ThreeDOGMappingNode::startReplay(const std::string & bag_fname, std::string
       }
     }
   }
-  pcl::io::savePCDFile("3d_map19.pcd", pc_msg);
+  pcl::io::savePCDFile("3d_map401.pcd", pc_msg);
 
   bag.close();
 }
@@ -472,10 +472,11 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
 	pcl::fromROSMsg(point_cloud2, *pcl_point_cloud);
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr voxel_cloud (new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::VoxelGrid<pcl::PointXYZ> vg;
-  vg.setInputCloud (pcl_point_cloud);
-  vg.setLeafSize (0.025, 0.025, 0.025);
-  vg.filter (*voxel_cloud);
+  voxel_cloud = pcl_point_cloud;
+  // pcl::VoxelGrid<pcl::PointXYZ> vg;
+  // vg.setInputCloud (pcl_point_cloud);
+  // vg.setLeafSize (0.1, 0.1, 0.1);
+  // vg.filter (*voxel_cloud);
 
 
   if (first_time == true) {
@@ -612,10 +613,10 @@ inline void ThreeDOGMappingNode::scanMatch(const pcl::PointCloud<pcl::PointXYZ>&
     // tf::poseTFToMsg(corrected, ps_msg.pose);
     // test_pub_4_.publish(ps_msg);
 
-    // if (score>minimum_score_){
+    if (score>minimum_score_){
       it->pose_=corrected;
       it->pose_.setRotation(it->pose_.getRotation().normalize());
-    // }
+    }
     
     // ps_msg.header.stamp = ros::Time::now();
     // ps_msg.header.frame_id = global_frame_id_;
@@ -853,9 +854,12 @@ main(int argc, char** argv)
     unsigned long int max_duration_buffer = vm["max_duration_buffer"].as<unsigned long int>();
     
     ros::init(argc, argv, "threedogmapping");
-    ThreeDOGMappingNode tdogmn(seed, max_duration_buffer) ;
+    ThreeDOGMappingNode tdogmn(seed, max_duration_buffer);
+    double start_time = ros::Time::now().toSec();
     tdogmn.startReplay(bag_fname, scan_topic);
+    double end_time = ros::Time::now().toSec();
     ROS_INFO("replay stopped.");
+    ROS_INFO("time score : %lf", end_time - start_time);
 
     ros::spin();
     return(0);
