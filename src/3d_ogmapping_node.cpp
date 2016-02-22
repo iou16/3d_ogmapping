@@ -1,33 +1,28 @@
 #include <ros/ros.h>
 
-#include <geometry_msgs/Point32.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/point_cloud_conversion.h>
 
+#include <geometry_msgs/Point32.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
-#include <geometry_msgs/QuaternionStamped.h>
 #include <geometry_msgs/Quaternion.h>
+#include <geometry_msgs/QuaternionStamped.h>
 
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
-
-#include <message_filters/subscriber.h>
 #include <tf/message_filter.h>
+#include <message_filters/subscriber.h>
 
 #include <pcl_ros/point_cloud.h>
 #include <pcl_ros/transforms.h>
-
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_cloud.h>
 #include <pcl/PCLPointCloud2.h>
 #include <pcl/point_types.h>
 #include <pcl/PCLPointCloud2.h>
 #include <pcl/filters/voxel_grid.h>
-
-#include <Eigen/Core>
-#include <Eigen/Geometry>
 
 #include "3d_ogmapper/motionmodel.h"
 #include "scanmatcher/smmap.h"
@@ -112,44 +107,27 @@ class ThreeDOGMappingNode
 
 
   public:
-		ThreeDOGMappingNode();
+	ThreeDOGMappingNode();
     ThreeDOGMappingNode(long unsigned int seed, long unsigned int max_duration_buffer);
-		~ThreeDOGMappingNode();
+	~ThreeDOGMappingNode();
 
     void init();
-    void startLiveSlam();
     void startReplay(const std::string & bag_fname, std::string point_cloud_topic);
-    void publishTransform();
 
-		void pointcloudCallback(const sensor_msgs::PointCloudConstPtr& point_cloud);
-    void publishLoop(double transform_publish_period_);
+	void pointcloudCallback(const sensor_msgs::PointCloudConstPtr& point_cloud);
 
-	private:
-    ros::Publisher test_pub_1_;
-    ros::Publisher test_pub_2_;
-    ros::Publisher test_pub_3_;
-    ros::Publisher test_pub_4_;
-
-    ros::NodeHandle nh_;
-		tf::TransformListener tf_;
-    // message_filters::Subscriber<sensor_msgs::PointCloud>* point_cloud_sub_;
-    // tf::MessageFilter<sensor_msgs::PointCloud>* point_cloud_filter_;
+  private:
+	tf::TransformListener tf_;
     ros::Subscriber point_cloud_sub_;
-    tf::TransformBroadcaster* tfB_;
 
     ThreeDOGMapping::MotionModel motionmodel_;
     ThreeDOGMapping::ScanMatcher scanmatcher_;
 
     bool first_time;
 
-    tf::Transform map_to_odom_;
-    boost::mutex map_to_odom_mutex_;
-
-    boost::thread* transform_thread_;
-
-		std::string base_frame_id_;
-		std::string odom_frame_id_;
-		std::string global_frame_id_;
+	std::string base_frame_id_;
+	std::string odom_frame_id_;
+	std::string global_frame_id_;
 
     bool initMapper(const ros::Time& t);
     bool getOdomPose(tf::Pose& pose, const ros::Time& t);
@@ -194,12 +172,9 @@ class ThreeDOGMappingNode
     double zmax_;
     double delta_;
 
-		ros::NodeHandle private_nh_;
+	ros::NodeHandle private_nh_;
 
     unsigned long int seed_;
-
-    double transform_publish_period_;
-    double tf_delay_;
 
     ParticleVector particles_;
 
@@ -210,39 +185,26 @@ class ThreeDOGMappingNode
 };
 
 ThreeDOGMappingNode::ThreeDOGMappingNode():
-  map_to_odom_(tf::Transform(tf::createQuaternionFromRPY(0 ,0 ,0), tf::Point(0, 0, 0))),
-	private_nh_("~"), transform_thread_(NULL), tf_(ros::Duration(240))
+  	private_nh_("~"),  tf_(ros::Duration(240))
 {
   seed_ = time(NULL);
   init();
 }
 
 ThreeDOGMappingNode::ThreeDOGMappingNode(long unsigned int seed, long unsigned int max_duration_buffer):
-  map_to_odom_(tf::Transform(tf::createQuaternionFromRPY(0 ,0 ,0), tf::Point(0, 0, 0))),
-	private_nh_("~"), transform_thread_(NULL), seed_(seed), tf_(ros::Duration(max_duration_buffer))
+	private_nh_("~"),  seed_(seed), tf_(ros::Duration(max_duration_buffer))
 {
   init();
 }
 
-ThreeDOGMappingNode::~ThreeDOGMappingNode()
-{
-  if(transform_thread_){
-    transform_thread_->join();
-    delete transform_thread_;
-  }
-}
+ThreeDOGMappingNode::~ThreeDOGMappingNode(){}
 
 void ThreeDOGMappingNode::init()
 {
-  tfB_ = new tf::TransformBroadcaster();
-
   first_time = true;
 
-  private_nh_.param("base_frame_id", base_frame_id_, std::string("base_link"));
-	private_nh_.param("odom_frame_id", odom_frame_id_, std::string("odom"));
+  private_nh_.param("base_frame_id", base_frame_id_, std::string("base_link"));	private_nh_.param("odom_frame_id", odom_frame_id_, std::string("odom"));
 	private_nh_.param("global_frame_id", global_frame_id_, std::string("map"));
-
-  private_nh_.param("transform_publish_period", transform_publish_period_, 0.05);
 
   private_nh_.param("minimum_score", minimum_score_, 0.0);
   private_nh_.param("sigma", sigma_, 0.05);
@@ -272,21 +234,7 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("zmax", zmax_, 1.0);
   private_nh_.param("delta", delta_, 0.1);
 
-  private_nh_.param("tf_delay", tf_delay_, transform_publish_period_);
-
   obsSigmaGain_=3.0;
-}
-
-void ThreeDOGMappingNode::startLiveSlam()
-{
-  point_cloud_sub_ = nh_.subscribe("hokuyo3d/hokuyo_cloud", 1000, &ThreeDOGMappingNode::pointcloudCallback, this);
-  
-  transform_thread_ = new boost::thread(boost::bind(&ThreeDOGMappingNode::publishLoop, this, transform_publish_period_));
-
-  test_pub_1_ = nh_.advertise<geometry_msgs::PoseStamped>("nowpose", 0, true);
-  test_pub_2_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 0, true);
-  test_pub_3_ = nh_.advertise<sensor_msgs::PointCloud>("pointcloud", 0, true);
-  test_pub_4_ = nh_.advertise<geometry_msgs::PoseStamped>("bestpose", 0, true);
 }
 
 void ThreeDOGMappingNode::startReplay(const std::string & bag_fname, std::string point_cloud_topic)
@@ -327,18 +275,6 @@ void ThreeDOGMappingNode::startReplay(const std::string & bag_fname, std::string
 
     while (!s_queue.empty())
     {
-      // try
-      // {
-      //   tf::StampedTransform t;
-      //   tf_.lookupTransform(s_queue.front()->header.frame_id, odom_frame_id_, s_queue.front()->header.stamp, t);
-      //   this->pointcloudCallback(s_queue.front());
-      //   s_queue.pop();
-      // }
-      // catch(tf::ExtrapolationException& e)
-      // {
-      //   ROS_WARN("%s", e.what());
-      //   break;
-      // }
       this->pointcloudCallback(s_queue.front());
       s_queue.pop();
     }
@@ -366,28 +302,6 @@ void ThreeDOGMappingNode::startReplay(const std::string & bag_fname, std::string
   pcl::io::savePCDFile("3d_map401.pcd", pc_msg);
 
   bag.close();
-}
-
-void
-ThreeDOGMappingNode::publishLoop(double transform_publish_period_)
-{
-  if(transform_publish_period_ == 0)
-    return;
-
-  ros::Rate r(1.0 / transform_publish_period_);
-  while (ros::ok()){
-    publishTransform();
-    r.sleep();
-  }
-}
-
-void
-ThreeDOGMappingNode::publishTransform()
-{
-  map_to_odom_mutex_.lock();
-  ros::Time tf_expiration = ros::Time::now() + ros::Duration(tf_delay_);
-  tfB_->sendTransform(tf::StampedTransform(map_to_odom_, tf_expiration, global_frame_id_, odom_frame_id_));
-  map_to_odom_mutex_.unlock();
 }
 
 bool
@@ -506,15 +420,6 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
 
   odoPose_ = relPose;
 
-  // geometry_msgs::PoseArray cloud_msg;
-  // cloud_msg.header.stamp = ros::Time::now();
-  // cloud_msg.header.frame_id = global_frame_id_;
-  // cloud_msg.poses.resize(particles_.size());
-  // for(int i=0; i<particles_.size(); i++){
-  //   tf::poseTFToMsg(tf::Pose(particles_.at(i).pose_.getRotation(), particles_.at(i).pose_.getOrigin()), cloud_msg.poses[i]);
-  // }
-  // test_pub_2_.publish(cloud_msg);
-
   if (first_time || linerDistance_>linerThreshold_ || angularDistance_ >angularThreshold_) {
     if (first_time) {
       for (ParticleVector::iterator it=particles_.begin(); it!=particles_.end(); it++){
@@ -531,25 +436,10 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
       ROS_INFO("scanMatch");
       scanMatch(*voxel_cloud);
 
-      // geometry_msgs::PoseStamped ps_msg;
-      // ps_msg.header.stamp = ros::Time::now();
-      // ps_msg.header.frame_id = global_frame_id_;
-      // tf::poseTFToMsg(tf::Pose(particles_.at(getBestParticleIndex()).pose_.getRotation(), particles_.at(getBestParticleIndex()).pose_.getOrigin()), ps_msg.pose);
-      // test_pub_4_.publish(ps_msg);
-
       updateTreeWeights(false);
 
       ROS_INFO("resample");
       resample(*voxel_cloud);
-      
-      // geometry_msgs::PoseArray cloud_msg;
-      // cloud_msg.header.stamp = ros::Time::now();
-      // cloud_msg.header.frame_id = global_frame_id_;
-      // cloud_msg.poses.resize(particles_.size());
-      // for(int i=0; i<particles_.size(); i++){
-      //   tf::poseTFToMsg(tf::Pose(particles_.at(i).pose_.getRotation(), particles_.at(i).pose_.getOrigin()), cloud_msg.poses[i]);
-      // }
-      // test_pub_2_.publish(cloud_msg);
     }
 
     updateTreeWeights(false);
@@ -564,36 +454,6 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
     tf::Pose mpose = particles_[best].pose_;
     tf::Transform base_to_map = tf::Transform(mpose.getRotation(), mpose.getOrigin()).inverse();
     tf::Transform odom_to_base = tf::Transform(relPose.getRotation(), relPose.getOrigin());
-
-    map_to_odom_mutex_.lock();
-    map_to_odom_ = (odom_to_base * base_to_map).inverse();
-    map_to_odom_mutex_.unlock();
-    
-    // ROS_INFO("publish map");
-    // sensor_msgs::PointCloud pc_msg;
-    // pc_msg.points.clear();
-    // for (int x=0; x < particles_.at(best).map.getMapSizeX(); x++) {
-    //   for (int y=0; y < particles_.at(best).map.getMapSizeY(); y++) {
-    //     for (int z=0; z < particles_.at(best).map.getMapSizeZ(); z++){
-    //       ThreeDOGMapping::IntPoint p(x, y, z);
-    //       double occ=particles_.at(best).map.cell(p);
-    //       assert(occ <= 1.0);
-    //       if(occ > 0.25) {
-    //         ThreeDOGMapping::Point pc_p = particles_.at(best).map.map2world(x,y,z);
-    //         
-    //         geometry_msgs::Point32 p_msg;
-    //         p_msg.x = pc_p.x;
-    //         p_msg.y = pc_p.y;
-    //         p_msg.z = pc_p.z;
-    //         pc_msg.points.push_back(p_msg);
-    //       }
-    //     }
-    //   }
-    // }
-    // pc_msg.header.stamp = ros::Time::now();
-    // pc_msg.header.frame_id = global_frame_id_;
-    // test_pub_3_.publish(pc_msg);
-    
   }
   
   if(first_time == true) first_time = false;
@@ -607,22 +467,11 @@ inline void ThreeDOGMappingNode::scanMatch(const pcl::PointCloud<pcl::PointXYZ>&
     ROS_INFO("optimize");
     score=scanmatcher_.optimize(corrected, it->map, it->pose_, point_cloud);
 
-    // geometry_msgs::PoseStamped ps_msg;
-    // ps_msg.header.stamp = ros::Time::now();
-    // ps_msg.header.frame_id = global_frame_id_;
-    // tf::poseTFToMsg(corrected, ps_msg.pose);
-    // test_pub_4_.publish(ps_msg);
-
     if (score>minimum_score_){
       it->pose_=corrected;
       it->pose_.setRotation(it->pose_.getRotation().normalize());
     }
     
-    // ps_msg.header.stamp = ros::Time::now();
-    // ps_msg.header.frame_id = global_frame_id_;
-    // tf::poseTFToMsg(it->pose_, ps_msg.pose);
-    // test_pub_4_.publish(ps_msg);
-
     ROS_INFO("likelihoodAndScore");
     scanmatcher_.likelihoodAndScore(s, l, it->map, it->pose_, point_cloud);
     it->weight_+=l;
@@ -801,18 +650,6 @@ int ThreeDOGMappingNode::getBestParticleIndex() const{
   return (int) bi;
 }
 
-
-// int
-// main(int argc, char** argv)
-// {
-//   ros::init(argc, argv, "threedogmapping");
-// 
-//   ThreeDOGMappingNode tdogmn;
-//   tdogmn.startLiveSlam();
-// 	ros::spin();
-// 
-//   return 0;
-// }
 
 int
 main(int argc, char** argv)
