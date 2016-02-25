@@ -42,6 +42,7 @@
 #include <iostream>
 #include <string>
 
+// コマンドラインオプション等の解析
 #include <boost/program_options.hpp>
 
 
@@ -118,38 +119,45 @@ class ThreeDOGMappingNode
 
   private:
 	tf::TransformListener tf_;
-    ros::Subscriber point_cloud_sub_;
-
-    ThreeDOGMapping::MotionModel motionmodel_;
-    ThreeDOGMapping::ScanMatcher scanmatcher_;
 
     bool first_time;
-
+	
+	std::string lidar_frame_id_;
 	std::string base_frame_id_;
 	std::string odom_frame_id_;
 	std::string global_frame_id_;
+
+    ThreeDOGMapping::MotionModel motionmodel_;
+    ThreeDOGMapping::ScanMatcher scanmatcher_;
 
     bool initMapper(const ros::Time& t);
     bool getOdomPose(tf::Pose& pose, const ros::Time& t);
 
     inline void scanMatch(const pcl::PointCloud<pcl::PointXYZ>& point_cloud);
-    inline bool resample(const pcl::PointCloud<pcl::PointXYZ>& point_cloud, int adaptSize = 0); 
     inline void normalize();
+    inline bool resample(const pcl::PointCloud<pcl::PointXYZ>& point_cloud, int adaptSize = 0); 
+    void updateTreeWeights(bool weightsAlreadyNormalized = false);
     inline void resetTree();
     double propagateWeight(ThreeDOGMappingNode::TNode* n, double weight);
     double propagateWeights();
-    void updateTreeWeights(bool weightsAlreadyNormalized = false);
-    int getBestParticleIndex() const;
     inline const ParticleVector& getParticles() const {return particles_;};
+    int getBestParticleIndex() const;
 
-    tf::Pose odoPose_;
+    // ワンステップ前のオドメトリ座標系での自己位置
+	tf::Pose odoPose_;
+	// スキャンマッチングの尤度のしきい値
     double minimum_score_;
+	// 正規分布の分散
     double sigma_;
+	// レンジファインダの尤度場モデルの最近傍の障害物の探索範囲
     int kernelSize_;
+	// 各パーティクルに対するスキャンマッチングの探索範囲(的なモノ)
     double lstep_;
     double astep_;
+	// 各パーティクルに対するスキャンマッチングの探索回数(的なモノ)
     int iterations_;
     double lsigma_;
+	// オドメトリ動作モデルのパラメータ
     double srr_;
     double srt_;
     double str_;
@@ -158,22 +166,30 @@ class ThreeDOGMappingNode
     double alpha2_;
     double alpha3_;
     double alpha4_;
+	// 間引くしきい値＆実際の移動量
     double linerThreshold_, angularThreshold_;
     double linerDistance_,  angularDistance_;
+	// 正規化に使う値
     double obsSigmaGain_;
+	// リサンプリングのしきい値&neff(neff関連)
     double resampleThreshold_;
     double neff_;
+	// パーティクルの数
     int particle_size_;
+	// 地図の大きさ
     double xmin_;
     double ymin_;
     double zmin_;
     double xmax_;
     double ymax_;
     double zmax_;
+	// voxel一辺の長さ
     double delta_;
+	double occThreshold_;
 
 	ros::NodeHandle private_nh_;
 
+	// 擬似乱数の初期値
     unsigned long int seed_;
 
     ParticleVector particles_;
@@ -185,7 +201,7 @@ class ThreeDOGMappingNode
 };
 
 ThreeDOGMappingNode::ThreeDOGMappingNode():
-  	private_nh_("~"),  tf_(ros::Duration(240))
+	private_nh_("~"),  tf_(ros::Duration(240))
 {
   seed_ = time(NULL);
   init();
@@ -203,8 +219,10 @@ void ThreeDOGMappingNode::init()
 {
   first_time = true;
 
-  private_nh_.param("base_frame_id", base_frame_id_, std::string("base_link"));	private_nh_.param("odom_frame_id", odom_frame_id_, std::string("odom"));
-	private_nh_.param("global_frame_id", global_frame_id_, std::string("map"));
+  private_nh_.param("lidar_frame_id", lidar_frame_id_, std::string("hokuyo3d_link"));
+  private_nh_.param("base_frame_id", base_frame_id_, std::string("base_link"));	
+  private_nh_.param("odom_frame_id", odom_frame_id_, std::string("odom"));
+  private_nh_.param("global_frame_id", global_frame_id_, std::string("map"));
 
   private_nh_.param("minimum_score", minimum_score_, 0.0);
   private_nh_.param("sigma", sigma_, 0.05);
@@ -233,6 +251,7 @@ void ThreeDOGMappingNode::init()
   private_nh_.param("ymax", ymax_, 10.0);
   private_nh_.param("zmax", zmax_, 1.0);
   private_nh_.param("delta", delta_, 0.1);
+  private_nh_.param("occThreshold", occThreshold_, 0.25);
 
   obsSigmaGain_=3.0;
 }
@@ -280,6 +299,7 @@ void ThreeDOGMappingNode::startReplay(const std::string & bag_fname, std::string
     }
     
   }
+
   int best = getBestParticleIndex();
   ROS_INFO("save map");
   pcl::PointCloud<pcl::PointXYZ> pc_msg;
@@ -290,7 +310,7 @@ void ThreeDOGMappingNode::startReplay(const std::string & bag_fname, std::string
         ThreeDOGMapping::IntPoint p(x, y, z);
         double occ=particles_.at(best).map.cell_(p);
         // assert(occ <= 1.0);
-        if(occ > 0.25) {
+        if(occ > occThreshold_) {
           ThreeDOGMapping::Point pc_p = particles_.at(best).map.map2world(x,y,z);
           
           pcl::PointXYZ p_msg(pc_p.x,pc_p.y,pc_p.z);
@@ -382,8 +402,8 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
 {
   sensor_msgs::PointCloud2 point_cloud2;
   sensor_msgs::convertPointCloudToPointCloud2(*point_cloud, point_cloud2);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_point_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::fromROSMsg(point_cloud2, *pcl_point_cloud);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_point_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::fromROSMsg(point_cloud2, *pcl_point_cloud);
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr voxel_cloud (new pcl::PointCloud<pcl::PointXYZ>);
   voxel_cloud = pcl_point_cloud;
@@ -446,14 +466,7 @@ ThreeDOGMappingNode::pointcloudCallback(const sensor_msgs::PointCloudConstPtr& p
     linerDistance_=0;
     angularDistance_=0;
 
-    for (ParticleVector::iterator it=particles_.begin(); it!=particles_.end(); it++){
-	    it->previousPose_=it->pose_;
-    }
-
-    int best = getBestParticleIndex();
-    tf::Pose mpose = particles_[best].pose_;
-    tf::Transform base_to_map = tf::Transform(mpose.getRotation(), mpose.getOrigin()).inverse();
-    tf::Transform odom_to_base = tf::Transform(relPose.getRotation(), relPose.getOrigin());
+    for (ParticleVector::iterator it=particles_.begin(); it!=particles_.end(); it++) it->previousPose_=it->pose_;
   }
   
   if(first_time == true) first_time = false;
@@ -658,7 +671,7 @@ main(int argc, char** argv)
     po::options_description desc("Options"); 
     desc.add_options() 
     ("help", "Print help messages") 
-    ("point_cloud_topic",  po::value<std::string>()->default_value("/hokuyo3d/hokuyo_cloud") ,"topic that contains the point_cloud in the rosbag")
+    ("PointCloud_topic",  po::value<std::string>()->default_value("/hokuyo3d/hokuyo_cloud") ,"topic that contains the PointCcloud in the rosbag")
     ("bag_filename", po::value<std::string>()->required(), "ros bag filename") 
     ("seed", po::value<unsigned long int>()->default_value(0), "seed")
     ("max_duration_buffer", po::value<unsigned long int>()->default_value(999999), "max tf buffer duration") ;
@@ -666,8 +679,8 @@ main(int argc, char** argv)
     po::variables_map vm; 
     try 
     { 
-        po::store(po::parse_command_line(argc, argv, desc),  
-                  vm); 
+        po::store(po::parse_command_line(argc, argv, desc),
+				  vm); 
         
         if ( vm.count("help")  ) 
         { 
