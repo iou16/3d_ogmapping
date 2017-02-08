@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+
+<launch>
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find orne_navigation_executor)/rviz_cfg/nav.rviz"/>
+
+  <node name="elevation_difference_cloud_pub" pkg="elevation_difference_cloud_pub" type="elevation_difference_cloud_pub"/>
+  <node name="edogmapping" pkg="edogmapping" type="edogmapping"/>
+</launch>

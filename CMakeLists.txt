@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(threedogmapping)
+project(edogmapping)
 
 set(CMAKE_CXX_FLAGS "-march=native -O2 -std=c++11 -fopenmp")
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS   "-march=native -O2 -fopenmp")
@@ -9,8 +9,6 @@ set(CMAKE_EXE_LINKER_FLAGS "-march=native -O2 -fopenmp")
 find_package(catkin REQUIRED COMPONENTS
   message_filters
   roscpp
-  rospy
-  std_msgs
   sensor_msgs
   geometry_msgs
   tf
@@ -26,7 +24,7 @@ catkin_package(
   CATKIN_DEPENDS 
     message_filters 
     roscpp 
-    rospy
+    sensor_msgs
     tf
     pcl_ros
     pcl_conversions
@@ -35,30 +33,24 @@ catkin_package(
 )
 
 include_directories(
-  include/3d_ogmapping
-  include/3d_ogmapping/3d_ogmapper
-  include/3d_ogmapping/scanmatcher
-  include/3d_ogmapping/grid
-  include/3d_ogmapping/utils
-  include/3d_ogmapping/particlefilter
+  include/edogmapping
+  include/edogmapping/motion_update
+  include/edogmapping/sensor_update
+  include/edogmapping/map
+  include/edogmapping/utils
+  include/edogmapping/particlefilter
   ${catkin_INCLUDE_DIRS} include
   ${Eigen_INCLUDE_DIRS}
 )
 
-add_executable(3d_ogmapping
-  src/3d_ogmapping_node.cpp
-  src/3d_ogmapping/3d_ogmapper/motionmodel.cpp
-  src/3d_ogmapping/utils/stat.cpp
-  src/3d_ogmapping/scanmatcher/smmap.cpp
-  src/3d_ogmapping/scanmatcher/scanmatcher.cpp
+add_executable(edogmapping
+  src/edogmapping_node.cpp
+  src/edogmapping/motion_update/motionmodel.cpp
+  src/edogmapping/sensor_update/smmap.cpp
+  src/edogmapping/sensor_update/scanmatcher.cpp
+  src/edogmapping/utils/stat.cpp
 )
-add_executable(removeoutliersmap src/remove_outliers.cpp)
 
-target_link_libraries(3d_ogmapping
+target_link_libraries(edogmapping
   ${catkin_LIBRARIES}
 )
-
-target_link_libraries(removeoutliersmap
-  ${catkin_LIBRARIES}
-)
-
